@@ -377,16 +377,16 @@ end;
 -- The "0x" should not be deleted.
 function Check()
 	
-	success = false;
-	XPosAddr = forms.gettext(XPosAddrTxt);
-	YPosAddr = forms.gettext(YPosAddrTxt);
-	MovAngAddr = forms.gettext(MovAngAddrTxt);
-	CamAngAddr = forms.gettext(CamAngAddrTxt);
-	Offset = forms.gettext(OffsetTxt);
-	Type = forms.gettext(TypeDrop);
-	Modulo = forms.gettext(ModTxt);
-	DeadzoneMin = forms.gettext(MinTxt);
-	DeadzoneMax = forms.gettext(MaxTxt);
+	local success = false;
+	local XPosAddr = forms.gettext(XPosAddrTxt);
+	local YPosAddr = forms.gettext(YPosAddrTxt);
+	local MovAngAddr = forms.gettext(MovAngAddrTxt);
+	local CamAngAddr = forms.gettext(CamAngAddrTxt);
+	local Offset = forms.gettext(OffsetTxt);
+	local Type = forms.gettext(TypeDrop);
+	local Modulo = forms.gettext(ModTxt);
+	local DeadzoneMin = forms.gettext(MinTxt);
+	local DeadzoneMax = forms.gettext(MaxTxt);
 	
 	if XPosAddr ~= "0x" and YPosAddr ~= "0x" and MovAngAddr ~= "0x" and Offset ~= ""
 	then success = true;
@@ -406,7 +406,8 @@ function Check()
 	elseif (Type == "DWord" and Modulo == "")
 	then Modulo = 4294967296; 
 	elseif (Type == "Float" and Modulo == "")
-	then success = false;
+	then Modulo = 360
+	else success = false;
 	end
 	
 	if DeadzoneMin == ""
@@ -522,11 +523,10 @@ then XPosAddr = tonumber(AddrFile:read("*line"));
 	 
 	 WindowForm(); 
 	 AddrFile:close();
-end;
- 
--- If there's no content in the file a window will open, where the user types in the memory addresses once.
-if AddrFile == nil---XPosAddr == nil and YPosAddr == nil and MovAngAddr == nil and HasGameRotatingCam == nil and CamAngAddr == nil
-then AddrForm();
+else AddrForm();
+--AddrFile == nil-- If there's no content in the file a window will open, where the user types in the memory addresses once.
+--then 
+---XPosAddr == nil and YPosAddr == nil and MovAngAddr == nil and HasGameRotatingCam == nil and CamAngAddr == nil
 	--Prevents crash.
 	-- XPosAddr = 0;
 	 --YPosAddr = 0;
