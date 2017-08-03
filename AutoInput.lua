@@ -1,6 +1,8 @@
 -- Auto analog input script written by TASeditor
 -- Main window
 -- This function runs after the user clicked on the Start button.
+
+--TODO: For other platforms as well
 memory.usememorydomain("RDRAM")
 function Start()
 
@@ -688,7 +690,7 @@ function LineDrawing()
 	
 end;
 
-function RotateAround(radius)
+function RotateAround(radius) --Useless function
 
 	Xbest = math.floor(math.cos(InputAngle)*radius+0.5);
 	Ybest = math.floor(math.sin(InputAngle)*radius+0.5);
@@ -751,7 +753,7 @@ function RotateAround(radius)
 	--print(math.atan2(Ybest, Xbest).." ".. math.abs(math.atan2(Ybest, Xbest)-InputAngle));
 end;
 
-function NoOptimisation(radius)
+function NoOptimisation(radius) --Useless function
 	
 	Xbest = math.floor(math.cos(InputAngle)*radius+0.5);
 	Ybest = math.floor(math.sin(InputAngle)*radius+0.5);
@@ -762,6 +764,8 @@ end;
 
 function TwoStepping()
 	
+	--This function should take care of adjusting the input angle in case it has a high error
+	--TODO: implement
 
 end;
 
@@ -835,7 +839,9 @@ function CreateInput()
 end;
 
 function MarkerControl()
-
+	
+	--Is this usefull if we already have the canvas
+	
 	marker = tastudio.getmarker(emu.framecount())
 	
 	if bizstring.startswith(marker, "a=")
