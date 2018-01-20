@@ -1,8 +1,6 @@
 -- Auto analog input script written by TASeditor
 -- Main window
 -- This function runs after the user clicked on the Start button.
-
---TODO: For other platforms as well
 memory.usememorydomain("RDRAM")
 function Start()
 
@@ -10,7 +8,6 @@ function Start()
 	then if StartFlag == false
 		 then if forms.ischecked(PosCheck) and not forms.ischecked(AngCheck)
 			  then --CalcAngle();
-				   tastudio.setrecording(true)
 				   FollowAngle = tonumber(forms.gettext(AngFollowTxt));
 				   RadiusMin = forms.gettext(RadiusMinTxt);
 				   RadiusMax = forms.gettext(RadiusMaxTxt);
@@ -21,8 +18,7 @@ function Start()
 				   StartFlag = true;
 				   forms.settext(StatLabel, "Started");
 			  elseif not forms.ischecked(PosCheck) and forms.ischecked(AngCheck)
-				  then tastudio.setrecording(true)
-					   FollowAngle = forms.gettext(AngFollowTxt);
+				  then FollowAngle = forms.gettext(AngFollowTxt);
 					   RadiusMin = forms.gettext(RadiusMinTxt);
 					   RadiusMax = forms.gettext(RadiusMaxTxt);
 					   Optimisation = forms.gettext(OptDrop);
@@ -32,9 +28,7 @@ function Start()
 				  elseif forms.ischecked(PosCheck) and forms.ischecked(AngCheck)
 					  then forms.settext(StatLabel, "Error: Uncheck one checkbox");
 					  elseif not forms.ischecked(PosCheck) and not forms.ischecked(AngCheck) --Use this for the canvas right now
-						  then tastudio.setplayback(firstPointFrame)
-								tastudio.setrecording(true)
-							   UseCanv = true
+						  then UseCanv = true
 							   RadiusMin = forms.gettext(RadiusMinTxt);
 					   RadiusMax = forms.gettext(RadiusMaxTxt);
 						 Optimisation = forms.gettext(OptDrop);  
@@ -55,12 +49,11 @@ function Pause()
 		 then PauseFlag = true;
 			  forms.settext(StatLabel, "Paused");
 			  forms.settext(PauseButton, "Continue");
-			  tastudio.setrecording(false)
 			  client.pause();
-			  Xinput["P1 X Axis"] = 0;
-			  Yinput["P1 Y Axis"] = 0;
-			  joypad.setanalog(Xinput);
-			  joypad.setanalog(Yinput);
+			 -- Xinput["P1 X Axis"] = 0;
+			  --Yinput["P1 Y Axis"] = 0;
+			  ---joypad.setanalog(Xinput);
+			  --joypad.setanalog(Yinput);
 		 else PauseFlag = false
 			  forms.settext(StatLabel, "Started");
 			  forms.settext(PauseButton, "Pause");
@@ -77,12 +70,12 @@ function Stop()
 		 PauseFlag = false;
 		 forms.settext(StatLabel, "Stopped");
 		 forms.settext(PauseButton, "Pause");
-		 tastudio.setrecording(false)
+		-- tastudio.setrecording(false)
 		 client.pause();
-		 Xinput["P1 X Axis"] = 0;
-		 Yinput["P1 Y Axis"] = 0;
-		 joypad.setanalog(Xinput);
-		 joypad.setanalog(Yinput);
+		 --Xinput["P1 X Axis"] = 0;
+		 --Yinput["P1 Y Axis"] = 0;
+		 --joypad.setanalog(Xinput);
+		 --joypad.setanalog(Yinput);
 		 X = 0;
 		 Y = 0;
 		 UseCanv = false
@@ -92,27 +85,27 @@ end;
 
 -- These functions run after the user clicked the "+" or "-" button.
 function IncrementAngle(inpX, inpY)
-
-	local inp_a = math.atan2(inp["Y Axis"], inp["X Axis"])
+	
+	local Xbest = inpX
+	local Ybest = inpY
+	local inp_a = math.atan2(inpX, inpY)
 	local inp_ad = (inp_a *180/math.pi) % 360
 	--print(tostring(inp_ad))
 	if not(inp_ad == 0 or inp_ad == 45 or inp_ad == 90 or inp_ad == 135 or inp_ad == 180 or inp_ad == 225 or inp_ad == 270 or inp_ad == 315)-- or math.abs(inp["X Axis"])/math.abs(inp["Y Axis"]) == 2 or math.abs(inp["Y Axis"])/math.abs(inp["X Axis"]) == 2)
-	then Bresenham(0,0, inpX*182, inpY*182)
-		--print("b")
-		 
+	then local Points = Bresenham(0,0, inpX*182, inpY*182)
+		--print("b")	 
 		 local bestDist = 9999999999;
-		 
-		 
+		  
 		 for i, pt in pairs(Points) do
 			local pt_a = math.atan2(pt.Y, pt.X)
 			local newDist = math.abs(pt_a - inp_a);
-		 
+			--print(tostring(pt.X).." "..tostring(pt.Y))
 		 	
 		 	if newDist < bestDist and pt_a > inp_a
-		 	then if Points[i].X >= -128 and Points[i].Y >= -128 and Points[i].X <= 127 and Points[i].Y <= 127
+		 	then if pt.X >= -128 and pt.Y >= -128 and pt.X <= 127 and pt.Y <= 127
 		 		then bestDist = newDist;
-		 			Xbest = Points[i].X;
-		 			Ybest = Points[i].Y;
+		 			Xbest = pt.X;
+		 			Ybest = pt.Y;
 		 		end
 		 	end;
 		 end; --TODO: Check user settings
@@ -131,77 +124,65 @@ function IncrementAngle(inpX, inpY)
 	elseif inp_ad == 315 then Xbest = 127; Ybest = -126	
 	end
 	
+	return Xbest, Ybest
+	
 end
 
 function Add()
 	
-	movie.setrerecordcount(movie.getrerecordcount()+1)
-	
-	lastf = emu.framecount()
-	sel = tastudio.getselection()
-	
 	if tastudio.engaged()
-	then inp = movie.getinputasmnemonic(sel[0]);
-		 inp = bizstring.remove(inp, 0, 5)
-		 inp = bizstring.remove(inp, 5, 1)
-		 inp = bizstring.split(inp, ",")
-		 inp["X Axis"] = tonumber(inp[1])
-		 inp["Y Axis"] = tonumber(inp[2])
-	else inp = joypad.get(1);
+	then local sel = tastudio.getselection()
+		 
+		for i in pairs(sel) do
+			
+			local inp = movie.getinput(sel[i])		
+			local X, Y = IncrementAngle(inp["P1 X Axis"], inp["P1 Y Axis"])
+			
+			tastudio.setanaloginput(sel[i], "P1 X Axis", X)
+			tastudio.setanaloginput(sel[i], "P1 Y Axis", Y)
+			
+			--print("selection"..tostring(sel[i]))
+			--print("X old"..tostring(inp["P1 X Axis"]))
+			--print("Y old"..tostring(inp["P1 Y Axis"]))
+			--print("X new"..tostring(X))
+			--print("Y new"..tostring(Y))
+	
+		end
 	end
 	
-	
-	IncrementAngle(inp["X Axis"], inp["Y Axis"])
-	
-
 	-- if HasGameRotatingCam == "true"
 	-- then FollowAngle = ((math.atan2(Ybest, Xbest) + CamAngle + Offset) % Modulo)*Modulo/2/math.pi % Modulo --TODO:
 	-- else FollowAngle = ((math.atan2(Ybest, Xbest) + Offset) % Modulo)*Modulo/2/math.pi % Modulo
 	-- end 
 	-- forms.settext(AngFollowTxt, tonumber(FollowAngle))
 	
-	
-	--frameEdit = emu.framecount()-1;
-	tastudio.setplayback(sel[0]);
-	
-	if tastudio.engaged()
-	then forms.settext(xLabel, Xbest);
-		 forms.settext(yLabel, Ybest);
-		 Xinput["P1 X Axis"] = Xbest;
-		 Yinput["P1 Y Axis"] = Ybest;
-		 joypad.setanalog(Xinput);
-		 joypad.setanalog(Yinput);
-	else Xinput["P1 X Axis"] = Xbest;
-		 Yinput["P1 Y Axis"] = Ybest;
-		 joypad.setanalog(Xinput);
-		 joypad.setanalog(Yinput);
-	end;
-	
 	fromAddSub = true
 	
 end;
 
 function DecrementAngle(inpX, inpY)
-
+	
+	local Xbest = inpX
+	local Ybest = inpY
 	local inp_a = math.atan2(inpX, inpY)
 	local inp_ad = (inp_a *180/math.pi) % 360
 	
-	
-	
 	if not(inp_ad == 0 or inp_ad == 45 or inp_ad == 90 or inp_ad == 135 or inp_ad == 180 or inp_ad == 225 or inp_ad == 270 or inp_ad == 315)
-	then Bresenham(0,0, inpX*182, inpY*182)
+	then local Points = Bresenham(0,0, inpX*182, inpY*182)
 
 		 local bestDist = 9999999999;
 		 
 		 for i, pt in pairs(Points) do
 			 local pt_a = math.atan2(pt.Y, pt.X)
 			 local newDist = math.abs(pt_a - inp_a);
+			 --print(tostring(pt.X).." "..tostring(pt.Y))
 			 
-			 if newDist < bestDist and pt_a < inp_a
-			 then if Points[i].X >= -128 and Points[i].Y >= -128 and Points[i].X <= 127 and Points[i].Y <= 127
+			 if newDist < bestDist and pt_a < inp_a -- TODO: Why does this not work
+			 then if pt.X >= -128 and pt.Y >= -128 and pt.X <= 127 and pt.Y <= 127
 				 then bestDist = newDist;
-					  Xbest = Points[i].X;
-					  Ybest = Points[i].Y;
+				 print("success")
+					  Xbest = pt.X;
+					  Ybest = pt.Y;
 				 end
 			 end;
 		 end;	
@@ -214,51 +195,34 @@ function DecrementAngle(inpX, inpY)
 	elseif inp_ad == 270 then Xbest = -1; Ybest = -128
 	elseif inp_ad == 315 then Xbest = 127; Ybest = -128
 	end
+	--print("decrement")
+	--print(tostring(Xbest).." "..tostring(Ybest))
 	
+	return Xbest, Ybest
 
 end
 
 function Sub()
 
-	movie.setrerecordcount(movie.getrerecordcount()+1)
-
-	lastf = emu.framecount()
-
-	sel = tastudio.getselection()
-
 	if tastudio.engaged()
-	then inp = movie.getinputasmnemonic(sel[0]);
-		 inp = bizstring.remove(inp, 0, 5)
-		 inp = bizstring.remove(inp, 5, 1)
-		 inp = bizstring.split(inp, ",")
-		 inp["X Axis"] = tonumber(inp[1])
-		 inp["Y Axis"] = tonumber(inp[2])
-	else inp = joypad.get(1);
+	then local sel = tastudio.getselection()
+		 
+		for i in pairs(sel) do
+			
+			local inp = movie.getinput(sel[i])		
+			local X, Y = DecrementAngle(inp["P1 X Axis"], inp["P1 Y Axis"])
+			--print(tostring(sel[i]))
+			print(tostring(X).." "..tostring(Y))
+			tastudio.setanaloginput(sel[i], "P1 X Axis", X)
+			tastudio.setanaloginput(sel[i], "P1 Y Axis", Y)
+		end
 	end
-	
-	DecrementAngle(inp["X Axis"], inp["Y Axis"])
 	
 	-- if HasGameRotatingCam == "true"
 	-- then FollowAngle = ((math.atan2(Ybest, Xbest) + CamAngle + Offset) % Modulo)*Modulo/2/math.pi % Modulo --TODO:
 	-- else FollowAngle = ((math.atan2(Ybest, Xbest) + Offset) % Modulo)*Modulo/2/math.pi % Modulo
 	-- end 
 	-- forms.settext(AngFollowTxt, tonumber(FollowAngle))
-
-	--frameEdit = emu.framecount()-1;
-	tastudio.setplayback(sel[0]);
-	
-	if tastudio.engaged()
-	then forms.settext(xLabel, Xbest);
-		 forms.settext(yLabel, Ybest);
-		 Xinput["P1 X Axis"] = Xbest;
-		 Yinput["P1 Y Axis"] = Ybest;
-		 joypad.setanalog(Xinput);
-		 joypad.setanalog(Yinput);		 
-	else Xinput["P1 X Axis"] = Xbest;
-		 Yinput["P1 Y Axis"] = Ybest;
-		 joypad.setanalog(Xinput);
-		 joypad.setanalog(Yinput);
-	end;
 	
 	fromAddSub = true
 
@@ -379,16 +343,16 @@ end;
 -- The "0x" should not be deleted.
 function Check()
 	
-	local success = false;
-	local XPosAddr = forms.gettext(XPosAddrTxt);
-	local YPosAddr = forms.gettext(YPosAddrTxt);
-	local MovAngAddr = forms.gettext(MovAngAddrTxt);
-	local CamAngAddr = forms.gettext(CamAngAddrTxt);
-	local Offset = forms.gettext(OffsetTxt);
-	local Type = forms.gettext(TypeDrop);
-	local Modulo = forms.gettext(ModTxt);
-	local DeadzoneMin = forms.gettext(MinTxt);
-	local DeadzoneMax = forms.gettext(MaxTxt);
+	success = false;
+	XPosAddr = forms.gettext(XPosAddrTxt);
+	YPosAddr = forms.gettext(YPosAddrTxt);
+	MovAngAddr = forms.gettext(MovAngAddrTxt);
+	CamAngAddr = forms.gettext(CamAngAddrTxt);
+	Offset = forms.gettext(OffsetTxt);
+	Type = forms.gettext(TypeDrop);
+	Modulo = forms.gettext(ModTxt);
+	DeadzoneMin = forms.gettext(MinTxt);
+	DeadzoneMax = forms.gettext(MaxTxt);
 	
 	if XPosAddr ~= "0x" and YPosAddr ~= "0x" and MovAngAddr ~= "0x" and Offset ~= ""
 	then success = true;
@@ -408,8 +372,7 @@ function Check()
 	elseif (Type == "DWord" and Modulo == "")
 	then Modulo = 4294967296; 
 	elseif (Type == "Float" and Modulo == "")
-	then Modulo = 360
-	else success = false;
+	then success = false;
 	end
 	
 	if DeadzoneMin == ""
@@ -525,10 +488,11 @@ then XPosAddr = tonumber(AddrFile:read("*line"));
 	 
 	 WindowForm(); 
 	 AddrFile:close();
-else AddrForm();
---AddrFile == nil-- If there's no content in the file a window will open, where the user types in the memory addresses once.
---then 
----XPosAddr == nil and YPosAddr == nil and MovAngAddr == nil and HasGameRotatingCam == nil and CamAngAddr == nil
+end;
+ 
+-- If there's no content in the file a window will open, where the user types in the memory addresses once.
+if AddrFile == nil---XPosAddr == nil and YPosAddr == nil and MovAngAddr == nil and HasGameRotatingCam == nil and CamAngAddr == nil
+then AddrForm();
 	--Prevents crash.
 	-- XPosAddr = 0;
 	 --YPosAddr = 0;
@@ -543,10 +507,10 @@ end
 --Brute force script																				--
 --**************************************************************************************************--
 
-Xinput = {};
-Yinput = {};
+--Xinput = {};
+--Yinput = {};
 
-Canvas = gui.createcanvas(800,800)
+--Canvas = gui.createcanvas(800,800)
 
 XdrawPlayer = 400
 YdrawPlayer = 400
@@ -568,7 +532,7 @@ UseCanv = false
 
 StartFlag = false;
 PauseFlag = false;
-X = 0; Y = 0;
+--X = 0; Y = 0;
 FollowAngle = 0
 CamAngle = 0;
 InputAngle = 0;
@@ -599,14 +563,14 @@ end;
 
 function Bresenham(xStart, yStart, xEnd, yEnd)
 
-	Points = {};
-	i = 0;
+	local Points = {};
+	local i = 0;
 	
-	dx = xEnd - xStart;
-	dy = yEnd - yStart;
+	local dx = xEnd - xStart;
+	local dy = yEnd - yStart;
 	
-	incx = sgn(dx)
-	incy = sgn(dy)
+	local incx = sgn(dx)
+	local incy = sgn(dy)
 	
 	if dx < 0 then dx = -dx; end;
 	if dy < 0 then dy = -dy; end;
@@ -646,9 +610,9 @@ function Bresenham(xStart, yStart, xEnd, yEnd)
 		end
 		
 		
-		radius = math.sqrt(x^2+y^2);
-		RadiusMin = forms.gettext(RadiusMinTxt);
-		RadiusMax = forms.gettext(RadiusMaxTxt);
+		local radius = math.sqrt(x^2+y^2);
+		local RadiusMin = forms.gettext(RadiusMinTxt);
+		local RadiusMax = forms.gettext(RadiusMaxTxt);
 		if (math.abs(x) >= DeadzoneMin and math.abs(y) >= DeadzoneMin and 
 			math.abs(x) <= DeadzoneMax and math.abs(y) <= DeadzoneMax and 
 			radius >= tonumber(RadiusMin) and radius <= tonumber(RadiusMax))
@@ -659,15 +623,19 @@ function Bresenham(xStart, yStart, xEnd, yEnd)
 		end	
 	
 	end
+	
+	return Points
 
 end
 
 function LineDrawing()
 	
-	Bresenham(0,0, math.cos(InputAngle)*182, math.sin(InputAngle)*182)
 	
-	bestDist = 9999999999;
+	local Points = Bresenham(0,0, math.cos(InputAngle)*182, math.sin(InputAngle)*182)
 	
+	local bestDist = 9999999999;
+	
+	local newPoint = {}
 	
 	for i, pt in pairs(Points) do
 		newDist = math.abs(math.atan2(pt.Y, pt.X) - InputAngle);
@@ -682,15 +650,15 @@ function LineDrawing()
 		if newDist < bestDist
 		then if Points[i].X >= -128 and Points[i].Y >= -128 and Points[i].X <= 127 and Points[i].Y <= 127
 			 then bestDist = newDist;
-				  Xbest = Points[i].X;
-				  Ybest = Points[i].Y;
+				  newPoint.X = Points[i].X;
+				  newPoint.Y = Points[i].Y;
 			 end
 		end;
 	end;
 	
 end;
 
-function RotateAround(radius) --Useless function
+function RotateAround(radius)
 
 	Xbest = math.floor(math.cos(InputAngle)*radius+0.5);
 	Ybest = math.floor(math.sin(InputAngle)*radius+0.5);
@@ -753,7 +721,7 @@ function RotateAround(radius) --Useless function
 	--print(math.atan2(Ybest, Xbest).." ".. math.abs(math.atan2(Ybest, Xbest)-InputAngle));
 end;
 
-function NoOptimisation(radius) --Useless function
+function NoOptimisation(radius)
 	
 	Xbest = math.floor(math.cos(InputAngle)*radius+0.5);
 	Ybest = math.floor(math.sin(InputAngle)*radius+0.5);
@@ -764,8 +732,6 @@ end;
 
 function TwoStepping()
 	
-	--This function should take care of adjusting the input angle in case it has a high error
-	--TODO: implement
 
 end;
 
@@ -822,26 +788,19 @@ function CreateInput()
 	end
 	
 	if tastudio.engaged()
-	then forms.settext(xLabel, Xbest);
-		 forms.settext(yLabel, Ybest);
+	then --forms.settext(xLabel, Xbest);
+		 --forms.settext(yLabel, Ybest);
 		 
-		 Xinput["P1 X Axis"] = Xbest;
-		 Yinput["P1 Y Axis"] = Ybest;
-		 joypad.setanalog(Xinput);
-		 joypad.setanalog(Yinput);
-		 
-	else Xinput["P1 X Axis"] = Xbest;
-		 Yinput["P1 Y Axis"] = Ybest;
-		 joypad.setanalog(Xinput);
-		 joypad.setanalog(Yinput);
+		 --Xinput["P1 X Axis"] = Xbest;
+		 --Yinput["P1 Y Axis"] = Ybest;
+		 --joypad.setanalog(Xinput);
+		 --joypad.setanalog(Yinput);
 	end;
 
 end;
 
 function MarkerControl()
-	
-	--Is this usefull if we already have the canvas
-	
+
 	marker = tastudio.getmarker(emu.framecount())
 	
 	if bizstring.startswith(marker, "a=")
@@ -863,8 +822,8 @@ function AppendWayPoint(MX, MY)
 		 Pindex = Pindex + 1
 	end
 	
-	table.insert(PointsX, Pindex, (XPosition+MX-XdrawPlayer))
-	table.insert(PointsY, Pindex, (YPosition+MY-YdrawPlayer))
+	table.insert(PointsX, Pindex, (XPosition+MX-XdrawPlayer)/Zoom)
+	table.insert(PointsY, Pindex, (YPosition+MY-YdrawPlayer)/Zoom)
 			  
 			  --CPoints.X = mouseX
 			  --CPoints.Y = mouseY
@@ -914,7 +873,8 @@ function DrawCanvas()
 	--selected = false
 	--TODO:resizable canvas
 	--TODO:Zooming
-	
+	XdrawPlayer = XdrawPlayer
+	YdrawPlayer = YdrawPlayer
 	--Player coordinate lines
 	Canvas.DrawLine(XdrawPlayer, 0, XdrawPlayer, 800, 0x55FF0000)
 	Canvas.DrawLine(0, YdrawPlayer, 800, YdrawPlayer, 0x55FF0000)
@@ -949,15 +909,27 @@ function DrawCanvas()
 		 then dmx = mouseX - oldMouseX
 			  dmy = mouseY - oldMouseY
 			  
-			  XdrawPlayer = XdrawPlayer + dmx
-			  YdrawPlayer = YdrawPlayer + dmy
+			  XdrawPlayer = XdrawPlayer + dmx/Zoom
+			  YdrawPlayer = YdrawPlayer + dmy/Zoom
 		 end
-		
+		 if mouseButt["XButton1"]
+		 then ZoomIn()
+
+		 end
+		 if mouseButt["XButton2"]
+		 then ZoomOut()
+
+		 end
+		 
+		 
 		 --print(tostring(mouseButt[Wheel]))
-		 Canvas.DrawText(0,0, " "..(XPosition+mouseX-XdrawPlayer).."\n"..(YPosition+mouseY-YdrawPlayer))
+		 Canvas.DrawText(0,0, " "..(XPosition+mouseX-XdrawPlayer)/Zoom.."\n"..(YPosition+mouseY-YdrawPlayer)/Zoom.."\n"..Zoom)
 		
 	else 
 	end
+	
+	
+
 	
 	for k,v in pairs(PointsX) do
 	
@@ -1024,8 +996,8 @@ function DrawCanvas()
 	if ind ~= nil-- and Pselection[ind]
 	then dmx = mouseX - oldMouseX
 		dmy = mouseY - oldMouseY
-		PointsX[ind] = PointsX[ind] + dmx
-		PointsY[ind] = PointsY[ind] + dmy
+		PointsX[ind] = PointsX[ind] + dmx/Zoom
+		PointsY[ind] = PointsY[ind] + dmy/Zoom
 		selected = true
 	else --selected = false
 	end
@@ -1051,7 +1023,7 @@ while true do
 	f_old = f;
 	
 	--MarkerControl()
-	DrawCanvas()
+	--DrawCanvas()
 
 	if StartFlag and not PauseFlag and not done and not emu.islagged()
 	then --tastudio.setrecording(true)
@@ -1063,26 +1035,26 @@ while true do
 	
 	inget = input.get()
 	
-	if not fromAddSub then 
+	--if not fromAddSub then 
 	if inget.R == true
 	then Add()
 	elseif inget.E == true
 		then Sub()
-	end
-	end
-	
-	if emu.framecount() < movie.length()
-	then old_in = movie.getinput(emu.framecount()) 
-		 joypad.set(old_in)
+	--end
 	end
 	
-	if fromAddSub == true
-	then client.unpause()
-		 if emu.framecount() >= lastf
-		 then client.pause()
-			  fromAddSub = false
-		 end
-	end
+	-- if emu.framecount() < movie.length()
+	-- then old_in = movie.getinput(emu.framecount()) 
+		 -- joypad.set(old_in)
+	-- end
+	
+	-- if fromAddSub == true
+	-- then client.unpause()
+		 -- if emu.framecount() >= lastf
+		 -- then client.pause()
+			  -- fromAddSub = false
+		 -- end
+	-- end
 
 	emu.yield()
 
