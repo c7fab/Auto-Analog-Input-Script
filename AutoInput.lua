@@ -50,10 +50,6 @@ function Pause()
 			  forms.settext(StatLabel, "Paused");
 			  forms.settext(PauseButton, "Continue");
 			  client.pause();
-			 -- Xinput["P1 X Axis"] = 0;
-			  --Yinput["P1 Y Axis"] = 0;
-			  ---joypad.setanalog(Xinput);
-			  --joypad.setanalog(Yinput);
 		 else PauseFlag = false
 			  forms.settext(StatLabel, "Started");
 			  forms.settext(PauseButton, "Pause");
@@ -70,14 +66,7 @@ function Stop()
 		 PauseFlag = false;
 		 forms.settext(StatLabel, "Stopped");
 		 forms.settext(PauseButton, "Pause");
-		-- tastudio.setrecording(false)
 		 client.pause();
-		 --Xinput["P1 X Axis"] = 0;
-		 --Yinput["P1 Y Axis"] = 0;
-		 --joypad.setanalog(Xinput);
-		 --joypad.setanalog(Yinput);
-		 X = 0;
-		 Y = 0;
 		 UseCanv = false
 	end;
 
@@ -88,27 +77,25 @@ function IncrementAngle(inpX, inpY)
 	
 	local Xbest = inpX
 	local Ybest = inpY
-	local inp_a = math.atan2(inpX, inpY)
+	local inp_a = math.atan2(inpY, inpX) % math.pi
 	local inp_ad = (inp_a *180/math.pi) % 360
-	--print(tostring(inp_ad))
+
 	if not(inp_ad == 0 or inp_ad == 45 or inp_ad == 90 or inp_ad == 135 or inp_ad == 180 or inp_ad == 225 or inp_ad == 270 or inp_ad == 315)-- or math.abs(inp["X Axis"])/math.abs(inp["Y Axis"]) == 2 or math.abs(inp["Y Axis"])/math.abs(inp["X Axis"]) == 2)
 	then local Points = Bresenham(0,0, inpX*182, inpY*182, "add", inpX, inpY)
-		--print("b")	 
 		 local bestDist = 9999999999;
-		  
+
 		 for i, pt in pairs(Points) do
-			local pt_a = math.atan2(pt.Y, pt.X)
+			local pt_a = math.atan2(pt.Y, pt.X) % math.pi
 			local newDist = math.abs(pt_a - inp_a);
-			--print(tostring(pt.X).." "..tostring(pt.Y))
-		 	
-		 	if newDist < bestDist and pt_a > inp_a
+
+		 	if newDist < bestDist
 		 	then if pt.X >= -128 and pt.Y >= -128 and pt.X <= 127 and pt.Y <= 127
-		 		then bestDist = newDist;
-		 			Xbest = pt.X;
-		 			Ybest = pt.Y;
+		 		then bestDist = newDist
+		 			Xbest = pt.X
+		 			Ybest = pt.Y
 		 		end
-		 	end;
-		 end; --TODO: Check user settings
+		 	end
+		 end --TODO: Check user settings
 	elseif inp_ad == 0 then Xbest = 127; Ybest = 1
 	--elseif inp_ad < 26.745226 and inp_ad > 26.384308 then Xbest = 127; Ybest = 64
 	elseif inp_ad == 45 then Xbest = 126; Ybest = 127
@@ -134,22 +121,11 @@ function Add()
 	then local sel = tastudio.getselection()
 		 
 		for i in pairs(sel) do
-			
 			local inp = movie.getinput(sel[i])		
 			local X, Y = IncrementAngle(inp["P1 X Axis"], inp["P1 Y Axis"])
-					--	print(tostring(sel[i]))
-		--	print(tostring(inp["P1 X Axis"]-X).." "..tostring(inp["P1 Y Axis"]-Y))
-			--print(tostring(X).." "..tostring(Y))
 			
 			tastudio.submitanalogchange(sel[i], "P1 X Axis", X)
 			tastudio.submitanalogchange(sel[i], "P1 Y Axis", Y)
-			
-			--print("selection"..tostring(sel[i]))
-			--print("X old"..tostring(inp["P1 X Axis"]))
-			--print("Y old"..tostring(inp["P1 Y Axis"]))
-			--print("X new"..tostring(X))
-			--print("Y new"..tostring(Y))
-	
 		end
 	end
 	
@@ -169,28 +145,25 @@ function DecrementAngle(inpX, inpY)
 	
 	local Xbest = inpX
 	local Ybest = inpY
-	local inp_a = math.atan2(inpX, inpY)
+	local inp_a = math.atan2(inpY, inpX) % math.pi
 	local inp_ad = (inp_a *180/math.pi) % 360
-	
+
 	if not(inp_ad == 0 or inp_ad == 45 or inp_ad == 90 or inp_ad == 135 or inp_ad == 180 or inp_ad == 225 or inp_ad == 270 or inp_ad == 315)
 	then local Points = Bresenham(0,0, inpX*182, inpY*182, "sub", inpX, inpY)
-
 		 local bestDist = 9999999999
 		 
 		 for i, pt in pairs(Points) do
-			 local pt_a = math.atan2(pt.Y, pt.X)
+			 local pt_a = math.atan2(pt.Y, pt.X) % math.pi
 			 local newDist = math.abs(pt_a - inp_a)
-			 --print(tostring(pt.X).." "..tostring(pt.Y))
 			 
-			 if newDist < bestDist and pt_a < inp_a -- TODO: Why does this not work
+			 if newDist < bestDist
 			 then if pt.X >= -128 and pt.Y >= -128 and pt.X <= 127 and pt.Y <= 127
-				 then bestDist = newDist
-				-- print("success")
-					  Xbest = pt.X
-					  Ybest = pt.Y
+				  then bestDist = newDist
+					   Xbest = pt.X
+					   Ybest = pt.Y
 				 end
-			 end;
-		 end;	
+			 end
+		 end
 	elseif inp_ad == 0 then Xbest = 127; Ybest = -1
 	elseif inp_ad == 45 then Xbest = 127; Ybest = 126
 	elseif inp_ad == 90 then Xbest = 1; Ybest = 127
@@ -200,8 +173,6 @@ function DecrementAngle(inpX, inpY)
 	elseif inp_ad == 270 then Xbest = -1; Ybest = -128
 	elseif inp_ad == 315 then Xbest = 127; Ybest = -128
 	end
-	--print("decrement")
-	--print(tostring(Xbest).." "..tostring(Ybest))
 	
 	return Xbest, Ybest
 
@@ -212,16 +183,12 @@ function Sub()
 	if tastudio.engaged()
 	then local sel = tastudio.getselection()
 		 
-		for i in pairs(sel) do
-			
+		 for i in pairs(sel) do
 			local inp = movie.getinput(sel[i])		
 			local X, Y = DecrementAngle(inp["P1 X Axis"], inp["P1 Y Axis"])
-		--				print(tostring(sel[i]))
-			--print(tostring(inp["P1 X Axis"]-X).." "..tostring(inp["P1 Y Axis"]-Y))
-			--print(tostring(X).." "..tostring(Y))
 			tastudio.submitanalogchange(sel[i], "P1 X Axis", X)
 			tastudio.submitanalogchange(sel[i], "P1 Y Axis", Y)
-		end
+		 end
 	end
 	
 	tastudio.applyinputchanges()
@@ -230,7 +197,7 @@ function Sub()
 	-- then FollowAngle = ((math.atan2(Ybest, Xbest) + CamAngle + Offset) % Modulo)*Modulo/2/math.pi % Modulo --TODO:
 	-- else FollowAngle = ((math.atan2(Ybest, Xbest) + Offset) % Modulo)*Modulo/2/math.pi % Modulo
 	-- end 
-	-- forms.settext(AngFollowTxt, tonumber(FollowAngle))
+
 	
 	fromAddSub = true
 
@@ -238,14 +205,12 @@ end;
 
 function CalcAngle(Xstart, Ystart, Xgoal, Ygoal)
 
-	local DeltaX = Xgoal - Xstart		--memory.readfloat(XPosAddr, true);
-	local DeltaY = Ygoal - Ystart		--memory.readfloat(YPosAddr, true);
-	--Distance = math.sqrt(DeltaX^2 + DeltaY^2);
+	local DeltaX = Xgoal - Xstart
+	local DeltaY = Ygoal - Ystart
 		--TODO: Games require different formula???
-	local NewAngle = ((math.atan2(-DeltaY , DeltaX) * (Modulo/2) / math.pi) ) % Modulo;
-	--print(tostring(NewAngle).."\n---------------------------")
-	--forms.settext(AngFollowTxt, NewAngle);
-	return NewAngle;
+	local NewAngle = ((math.atan2(-DeltaY , DeltaX) * (Modulo/2) / math.pi) ) % Modulo
+
+	return NewAngle
 		
 end;
 
@@ -254,6 +219,10 @@ function ToggleCanvasEdit()
 	if CanvasMode == "view"
 	then CanvasMode = "edit"
 		 forms.settext(CanvasButton, "View Mode")
+		 if frame_start == nil
+		 then frame_start = emu.framecount()
+		 end
+		 tastudio.setplayback(frame_start)
 	elseif CanvasMode == "edit"
 		then CanvasMode = "view"
 			 forms.settext(CanvasButton, "Edit Mode")
@@ -276,69 +245,45 @@ end
 -- This function creates the main window.
 function WindowForm()
 
-	local OptTable = {"Line drawing"};--, "Rotate around""None", 
+	local OptTable = {"Line drawing"};--, , ,"Rotate around","None"
 	
-	Window = forms.newform(300, 500, "Auto analog input");
+	Window = forms.newform(300, 500, "Auto analog input")
 
-	PosCheck = forms.checkbox(Window, "Go to position:", 5, 20); 
-	forms.label(Window, "X =", 110, 10, 30, 20);
-	XPosGotoTxt = forms.textbox(Window, "0", 120, 20, nil, 140, 5);
-	forms.label(Window, "Y =", 110, 40, 30, 20);
-	YPosGotoTxt = forms.textbox(Window, "0", 120, 20, nil, 140, 35);
+	PosCheck = forms.checkbox(Window, "Go to position:", 5, 20)
+	forms.label(Window, "X =", 110, 10, 30, 20)
+	XPosGotoTxt = forms.textbox(Window, "0", 120, 20, nil, 140, 5)
+	forms.label(Window, "Y =", 110, 40, 30, 20)
+	YPosGotoTxt = forms.textbox(Window, "0", 120, 20, nil, 140, 35)
 	
-	AngCheck = forms.checkbox(Window, "Follow angle:", 5, 75);
-	forms.label(Window, "a =", 110, 80, 30, 20);
-	AngFollowTxt = forms.textbox(Window, "0", 120, 20, nil, 140, 75);
+	AngCheck = forms.checkbox(Window, "Follow angle:", 5, 75)
+	forms.label(Window, "a =", 110, 80, 30, 20)
+	AngFollowTxt = forms.textbox(Window, "0", 120, 20, nil, 140, 75)
 	
-	forms.label(Window, "Radius: min =", 5, 120, 75, 20);
-	RadiusMinTxt = forms.textbox(Window, "67", 30, 20, nil, 80, 115);
+	forms.label(Window, "Radius: min =", 5, 120, 75, 20)
+	RadiusMinTxt = forms.textbox(Window, "67", 30, 20, nil, 80, 115)
 	forms.label(Window, "max =", 115, 120, 35, 20)
-	RadiusMaxTxt = forms.textbox(Window, "182", 30, 20, nil, 155, 115);
+	RadiusMaxTxt = forms.textbox(Window, "182", 30, 20, nil, 155, 115)
 	
-	forms.label(Window, "Increment/decrement input angle:", 5, 150, 170, 20);
-	forms.button(Window, "+", Add, 200, 145, 23, 23);
-	forms.button(Window, "-", Sub, 175, 145, 23, 23);
+	forms.label(Window, "Increment/decrement input angle:", 5, 150, 170, 20)
+	forms.button(Window, "+", Add, 200, 145, 23, 23)
+	forms.button(Window, "-", Sub, 175, 145, 23, 23)
 	
-	forms.label(Window, "Optimisation:", 5, 180, 70, 20);
-	OptDrop = forms.dropdown(Window, OptTable, 80, 175, 100, 20);
-	TwoStepCheck = forms.checkbox(Window, "Two stepping", 190, 175);
+	forms.label(Window, "Optimisation:", 5, 180, 70, 20)
+	OptDrop = forms.dropdown(Window, OptTable, 80, 175, 100, 20)
+	TwoStepCheck = forms.checkbox(Window, "Two stepping", 190, 175)
 	
-	forms.label(Window, "Status:", 5, 210, 40, 15);
-	StatLabel = forms.label(Window, "Stopped", 45, 210, 200, 20);
+	forms.label(Window, "Status:", 5, 210, 40, 15)
+	StatLabel = forms.label(Window, "Stopped", 45, 210, 200, 20)
 	
 	
 	
-	forms.button(Window, "Start", Start, 5, 230);
-	PauseButton = forms.button(Window, "Pause", Pause, 105, 230);
-	forms.button(Window, "Stop", Stop, 205, 230);
+	forms.button(Window, "Start", Start, 5, 230)
+	PauseButton = forms.button(Window, "Pause", Pause, 105, 230)
+	forms.button(Window, "Stop", Stop, 205, 230)
 	
 	CanvasButton = forms.button(Window, "Edit Mode", ToggleCanvasEdit, 5, 270)
-	--forms.button(Window, "Zoom +", ZoomIn, 100, 270)
-	--forms.button(Window, "Zoom -", ZoomOut, 150, 270)
-	
-	-- forms.label(Window, "Information:", 5, 270, 70, 20);
-	
-	-- forms.label(Window, "Current angle:", 5, 290, 73, 20);
-	-- CurrAngLabel = forms.label(Window, "", 75, 290, 40, 20);
-	-- forms.label(Window, "Error%:", 130, 290, 40, 20);
-	-- ErrorLabel = forms.label(Window, "", 210, 290, 40, 20);
-	
-	-- forms.label(Window, "Total error:", 5, 310, 70, 20);
-	-- TotErrLabel = forms.label(Window, "", 75, 310, 40, 20);
-	-- forms.label(Window, "Average error%:", 130, 310, 83, 20);
-	-- AvErrorLabel = forms.label(Window, "", 210, 310, 40, 20);
-	
-	-- forms.label(Window, "U Position:", 5, 330, 58, 20);
-	-- UPosLabel = forms.label(Window, "", 75, 330, 80, 20);
-	-- forms.label(Window, "Distance:", 5, 350, 52, 20);
-	-- DistLabel = forms.label(Window, "", 75, 350, 80, 20);
-	
-	--OptCheck = forms.checkbox(Window, "Optimize", 5, 280);
-	
-	if tastudio.engaged()
-	then xLabel = forms.label(Window, "X", 5, 400, 30, 20);
-		 yLabel = forms.label(Window, "Y", 40, 400, 30, 20);
-	end;
+	forms.button(Window, "Zoom +", ZoomIn, 100, 270)
+	forms.button(Window, "Zoom -", ZoomOut, 150, 270)
 
 end;
 
@@ -349,55 +294,55 @@ end;
 function Check()
 	
 	success = false;
-	XPosAddr = forms.gettext(XPosAddrTxt);
-	YPosAddr = forms.gettext(YPosAddrTxt);
-	MovAngAddr = forms.gettext(MovAngAddrTxt);
-	CamAngAddr = forms.gettext(CamAngAddrTxt);
-	Offset = forms.gettext(OffsetTxt);
-	Type = forms.gettext(TypeDrop);
-	Modulo = forms.gettext(ModTxt);
-	DeadzoneMin = forms.gettext(MinTxt);
-	DeadzoneMax = forms.gettext(MaxTxt);
+	XPosAddr = forms.gettext(XPosAddrTxt)
+	YPosAddr = forms.gettext(YPosAddrTxt)
+	MovAngAddr = forms.gettext(MovAngAddrTxt)
+	CamAngAddr = forms.gettext(CamAngAddrTxt)
+	Offset = forms.gettext(OffsetTxt)
+	Type = forms.gettext(TypeDrop)
+	Modulo = forms.gettext(ModTxt)
+	DeadzoneMin = forms.gettext(MinTxt)
+	DeadzoneMax = forms.gettext(MaxTxt)
 	
 	if XPosAddr ~= "0x" and YPosAddr ~= "0x" and MovAngAddr ~= "0x" and Offset ~= ""
-	then success = true;
-	end;	 
+	then success = true
+	end
 	
 	if CamAngAddr == "0x"
-	then HasGameRotatingCam = false;
-		 CamAngAddr = 0;
-	else HasGameRotatingCam = true;
-	end;
+	then HasGameRotatingCam = false
+		 CamAngAddr = 0
+	else HasGameRotatingCam = true
+	end
 		 
 	
 	if (Type == "Byte" and Modulo == "")
-	then Modulo = 256; 
+	then Modulo = 256
 	elseif (Type == "Word" and Modulo == "")
-	then Modulo = 65536; 
+	then Modulo = 65536
 	elseif (Type == "DWord" and Modulo == "")
-	then Modulo = 4294967296; 
+	then Modulo = 4294967296
 	elseif (Type == "Float" and Modulo == "")
-	then success = false;
+	then success = false
 	end
 	
 	if DeadzoneMin == ""
-	then DeadzoneMin = 0;
-	else DeadzoneMin = tonumber(DeadzoneMin);
+	then DeadzoneMin = 0
+	else DeadzoneMin = tonumber(DeadzoneMin)
 	end
 	
 	if DeadzoneMax == ""
-	then DeadzoneMax = 129;
-	else DeadzoneMax = tonumber(DeadzoneMax);
+	then DeadzoneMax = 129
+	else DeadzoneMax = tonumber(DeadzoneMax)
 	end
 	
 	if DeadzoneMin > DeadzoneMax 
-	then success = false;
-	end;
+	then success = false
+	end
 	
 	if success == true
 	then -- Writes the addresses into a text file.
 		 -- The user doesn't have to type in the addresses everytime.
-		 AddrFile = io.open(ROMname, "a");
+		 AddrFile = io.open(ROMname, "a")
 		 AddrFile:write(tonumber(XPosAddr), "\n", 
 						tonumber(YPosAddr), "\n", 
 						tonumber(MovAngAddr), "\n", 
@@ -407,12 +352,12 @@ function Check()
 						tostring(Type), "\n",
 						tonumber(Modulo), "\n",
 						DeadzoneMin, "\n",
-						DeadzoneMax);
-		 AddrFile:close();
+						DeadzoneMax)
+		 AddrFile:close()
 		 
 		 -- Closes the form where the user typed in the addresses.
-		 forms.destroy(Addr);
-		 WindowForm();
+		 forms.destroy(Addr)
+		 WindowForm()
 	end;
 	
 end;
@@ -496,7 +441,7 @@ then XPosAddr = tonumber(AddrFile:read("*line"))
 end;
  
 -- If there's no content in the file a window will open, where the user types in the memory addresses once.
-if AddrFile == nil---XPosAddr == nil and YPosAddr == nil and MovAngAddr == nil and HasGameRotatingCam == nil and CamAngAddr == nil
+if AddrFile == nil
 then AddrForm()
 	--Prevents crash.
 	-- XPosAddr = 0;
@@ -544,13 +489,7 @@ InputAngle = 0
 Radius = 0
 steps = 0
 done = false
---j = 0;
---diff = 10;
---bestdiff = 10;
--- X_0=0; Y_0=0;
--- X_g=0; Y_g=0;
--- X_b=0; Y_b=0;
--- frame_start = 0;
+frame_start = nil
 f=0
 f_old=0
 frameEdit = 0
@@ -630,15 +569,18 @@ function Bresenham(xStart, yStart, xEnd, yEnd, mode, xCurrent, yCurrent)
 			math.abs(x) <= DeadzoneMax and math.abs(y) <= DeadzoneMax and 
 			radius >= tonumber(RadiusMin) and radius <= tonumber(RadiusMax))
 		then local pt_a = math.atan2(y, x)
-			 local newDist = math.abs(pt_a - angleCurr)
 			 if mode == "add"
-			 then if pt_a > angleCurr and newDist < bestDist
+			 then local pt_a = math.atan2(y, x)
+				  local newDist = math.abs(pt_a - angleCurr)
+				  if pt_a > angleCurr and newDist < bestDist
 				  then Points[i] = {X = x, Y = y}
 					   bestDist = newDist
 					   i = i + 1
 				  end
 			elseif mode == "sub"
-				then if pt_a < angleCurr and newDist < bestDist
+				then local pt_a = math.atan2(y, x)
+					 local newDist = math.abs(pt_a - angleCurr)
+					 if pt_a < angleCurr and newDist < bestDist
 					 then Points[i] = {X = x, Y = y}
 						  bestDist = newDist
 						  i = i + 1
@@ -646,9 +588,7 @@ function Bresenham(xStart, yStart, xEnd, yEnd, mode, xCurrent, yCurrent)
 			else Points[i] = {X = x, Y = y}
 				 i = i + 1
 			end
-			 
 		end	
-	
 	end
 	
 	return Points
@@ -660,28 +600,23 @@ function LineDrawing()
 	
 	local Points = Bresenham(0,0, math.cos(InputAngle)*182, math.sin(InputAngle)*182, nil, nil, nil)
 	
-	local bestDist = 9999999999;
+	local bestDist = 9999999999
 	
-	local newPoint = {}
+	local newPoint = { X, Y }
 	
 	for i, pt in pairs(Points) do
-		newDist = math.abs(math.atan2(pt.Y, pt.X) - InputAngle);
-		--print("newDist"..newDist)
-		--print(math.abs(((math.atan2(pt.Y, pt.X) * (Modulo/2)/math.pi) % Modulo)))
-		--print(tostring(math.abs(math.atan2(pt.Y, pt.X) - InputAngle)))
-		--print(pt)
-		--print(pt.X.." "..pt.Y.." "..(math.atan2(pt.Y, pt.X) % Modulo).." "..newDist.." ".. math.abs(math.atan2(Ybest, Xbest)-InputAngle));
+		newDist = math.abs(math.atan2(pt.Y, pt.X) - InputAngle)
 		--if math.atan2(pt.Y, pt.X) == InputAngle
-		--then break;
+		--then break
 		--end;
 		if newDist < bestDist
 		then if pt.X >= -128 and pt.Y >= -128 and pt.X <= 127 and pt.Y <= 127
-			 then bestDist = newDist;
-				  newPoint.X = pt.X;
-				  newPoint.Y = pt.Y;
+			 then bestDist = newDist
+				  newPoint.X = pt.X
+				  newPoint.Y = pt.Y
 			 end
-		end;
-	end;
+		end
+	end
 	
 	return newPoint
 	
@@ -689,62 +624,103 @@ end;
 
 function RotateAround(radius)
 
-	Xbest = math.floor(math.cos(InputAngle)*radius+0.5);
-	Ybest = math.floor(math.sin(InputAngle)*radius+0.5);
+	local Point = {X, Y}
+
+	local Xbest = math.floor(math.cos(InputAngle)*radius+0.5)
+	local Ybest = math.floor(math.sin(InputAngle)*radius+0.5)
 	
 	
-	X = Xbest;
-	Y = Ybest;
+	local x = Xbest
+	local y = Ybest
 	
-	Steps = 0;
-	j = 0;
-	bestdiff = 9999999999;
-	InputAngleInt = math.atan2(Y, X); console.writeline(InputAngle.." "..InputAngleInt);
+	Steps = 0
+	j = 0
+	bestdiff = 9999999999
+	InputAngleInt = math.atan2(y, x) --console.writeline(InputAngle.." "..InputAngleInt);
 		
 	if InputAngleInt == InputAngle
-	then console.writeline("perfect");
+	then --console.writeline("perfect");
 	else 	
 		repeat
-		
 			if Steps % 2 == 0
 			then for i = 1,Steps,1 do
-					X = X - 1;
-					InputAngleInt = math.atan2(Y, X); console.writeline(X.." "..Y.." "..Steps);
-					diff = math.abs(InputAngleInt - InputAngle);
-					if diff < bestdiff then Xbest = X; Ybest = Y; bestdiff = diff; end;
-				 end;
-				 if InputAngleInt == InputAngle then Xbest = X; Ybest = Y; break; end; 
+					x = x - 1
+					InputAngleInt = math.atan2(y, x)-- console.writeline(X.." "..Y.." "..Steps)
+					diff = math.abs(InputAngleInt - InputAngle)
+					if diff < bestdiff 
+					then Xbest = x
+						 Ybest = y
+						 bestdiff = diff
+					end
+				 end
+				 
+				 if InputAngleInt == InputAngle 
+				 then Xbest = x
+					  Ybest = y
+					  break 
+				 end
+				 
 				 for i = 1,Steps,1 do
-					 Y = Y - 1;
-					 InputAngleInt = math.atan2(Y, X); console.writeline(X.." "..Y.." "..Steps);
-					 diff = math.abs(InputAngleInt - InputAngle);
-					if diff < bestdiff then Xbest = X; Ybest = Y; bestdiff = diff; end;
-				 end;
-				 if InputAngleInt == InputAngle then Xbest = X; Ybest = Y; break; end;	
+					 y = y - 1
+					 InputAngleInt = math.atan2(y, x)--; console.writeline(X.." "..Y.." "..Steps)
+					 diff = math.abs(InputAngleInt - InputAngle)
+					 if diff < bestdiff 
+					 then Xbest = x
+						  Ybest = y
+						  bestdiff = diff
+					end
+				 end
+				 
+				 if InputAngleInt == InputAngle 
+				 then Xbest = x
+					  Ybest = y
+					  break
+				 end	
 			else for i = 1,Steps,1 do
-					 X = X + 1;
-					 InputAngleInt = math.atan2(Y, X); console.writeline(X.." "..Y.." "..Steps);
-					 diff = math.abs(InputAngleInt - InputAngle);
-					 if diff < bestdiff then Xbest = X; Ybest = Y; bestdiff = diff; end;
-				 end;
-				 if InputAngleInt == InputAngle then Xbest = X; Ybest = Y; break; end;
+					 x = x + 1
+					 InputAngleInt = math.atan2(y, x)--; console.writeline(X.." "..Y.." "..Steps);
+					 diff = math.abs(InputAngleInt - InputAngle)
+					 if diff < bestdiff 
+					 then Xbest = x
+						  Ybest = y
+						  bestdiff = diff
+					 end
+				 end
+				 
+				 if InputAngleInt == InputAngle 
+				 then Xbest = x
+					  Ybest = y
+					  break
+				 end
 				
 				 for i = 1,Steps,1 do
-					 Y = Y + 1;
-					 InputAngleInt = math.atan2(Y, X); console.writeline(X.." "..Y.." "..Steps);
-					 diff = math.abs(InputAngleInt - InputAngle);
-					 if diff < bestdiff then Xbest = X; Ybest = Y; bestdiff = diff; end;
-				 end;
-				 if InputAngleInt == InputAngle then Xbest = X; Ybest = Y; break; end;
-				
-			end;
-			Steps = Steps + 1;
-			j = j +1;
+					 y = y + 1
+					 InputAngleInt = math.atan2(y, x)--; console.writeline(X.." "..Y.." "..Steps);
+					 diff = math.abs(InputAngleInt - InputAngle)
+					 if diff < bestdiff 
+					 then Xbest = x
+						  Ybest = y
+						  bestdiff = diff
+					 end
+				 end
+				 
+				 if InputAngleInt == InputAngle 
+				 then Xbest = x
+					  Ybest = y
+					  break 
+				 end	
+			end
+			Steps = Steps + 1
+			j = j +1
 		until j == 5 --how long does this need to run?
 		
 		--Steps = 1;
 		
 	end
+	
+	Point = {X = Xbest, Y = Ybest }
+	
+	return Point
 	--done = true;
 	--j = 0;
 	--print(math.atan2(Ybest, Xbest).." ".. math.abs(math.atan2(Ybest, Xbest)-InputAngle));
@@ -752,10 +728,12 @@ end;
 
 function NoOptimisation(radius)
 	
-	Xbest = math.floor(math.cos(InputAngle)*radius+0.5);
-	Ybest = math.floor(math.sin(InputAngle)*radius+0.5);
+	local Point = {X, Y}
+		
+	Point.X = math.floor(math.cos(InputAngle)*radius+0.5);
+	Point.Y = math.floor(math.sin(InputAngle)*radius+0.5);
 	
-	--print(math.atan2(Ybest, Xbest).." ".. math.abs(math.atan2(Ybest, Xbest)-InputAngle));
+	return Point
 
 end;
 
@@ -790,38 +768,29 @@ function CreateInput()
 	end
 	
 	if Pindex > 1 and UseCanv and p < Pindex - 1
-	then --gui.text(100, 100, "UseCanv"..tostring(UseCanv))
-		 lambdax = (XPosition - PointsX[p])/(PointsX[p+1]-PointsX[p])
+	then lambdax = (XPosition - PointsX[p])/(PointsX[p+1]-PointsX[p])
 		 lambday = (YPosition - PointsY[p])/(PointsY[p+1]-PointsY[p])
 		 if lambdax >= 1 or lambday >= 1
 		 then p = p + 1
-			--  print(tostring(p))
 		 end
-		 --print("asdf")
-		-- print(tostring(PointsX[p+1]))
-		-- print(tostring(PointsY[p+1]))
+
 		 if p < Pindex - 1
 		 then FollowAngle = CalcAngle(XPosition, YPosition, PointsX[p+1], PointsY[p+1])
-		 else --tastudio.setrecording(false)
 		 end
 	end
-	
-		 
 		 
 	if HasGameRotatingCam == "true"
 	then InputAngle = ((FollowAngle - CamAngle - Offset) % Modulo)*math.pi/(Modulo/2);
 	else InputAngle = ((FollowAngle - Offset) % Modulo)*math.pi/(Modulo/2);
 	end;
 	
-	if Optimisation == "None" then NoOptimisation(RadiusMax);
-	elseif Optimisation == "Rotate around" then RotateAround(math.floor(RadiusMax-RadiusMin/2+0.5));
+	if Optimisation == "None" then Point = NoOptimisation(RadiusMax);
+	elseif Optimisation == "Rotate around" then Point = RotateAround(math.floor(RadiusMax-RadiusMin/2+0.5));
 	elseif Optimisation == "Line drawing" then Point = LineDrawing()
 	end
 	
-	
-	
 	if tastudio.engaged()
-	then if emu.islagged()--print(tostring(Point.X).." "..tostring(Point.Y))
+	then if emu.islagged()
 		 then tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", Point.X)
 			  tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", Point.Y)
 		 else tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", 0)
@@ -1058,66 +1027,30 @@ while true do
 	
 	--MarkerControl()
 	
-	if client.isturbo() == false
+	if not client.isturbo()
 	then DrawCanvas()
 	end
-
-	if StartFlag and not PauseFlag and not done --and emu.islagged()
-	then --tastudio.setrecording(true)
-		 CreateInput()
-	else--tastudio.setrecording(false)
-		
-	end
-
-	done = true
-	
-	inget = input.get()
-	
-	
-	if inget.R == true and wasR == nil
-	then Add()
-	end
-	if inget.E == true and wasE == nil
-	then Sub()
-	end
-	
-	wasR = inget.R
-	wasE = inget.E
-	
-	-- if emu.framecount() < movie.length()
-	-- then old_in = movie.getinput(emu.framecount()) 
-		 -- joypad.set(old_in)
-	-- end
-	
-	-- if fromAddSub == true
-	-- then client.unpause()
-		 -- if emu.framecount() >= lastf
-		 -- then client.pause()
-			  -- fromAddSub = false
-		 -- end
-	-- end
-
-	emu.yield()
-
-end
-
-function Main()
-
-	f = emu.framecount();
-	
-	if f_old ~= f then done = false; end;
-	
-	f_old = f;
 
 	if StartFlag and not PauseFlag and not done
 	then CreateInput()
 	end
 
 	done = true
+	
+	inget = input.get()
+	
+	if inget.R == true and wasR == nil
+	then Add()
+	elseif inget.E == true and wasE == nil
+	then Sub()
+	end
+	
+	wasR = inget.R
+	wasE = inget.E
+
+
+	emu.yield()
 
 end
 
---event.onloadstate(Main)
---event.onframestart(Main)
---event.oninputpoll(Main)
 
