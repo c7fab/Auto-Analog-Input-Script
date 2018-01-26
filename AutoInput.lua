@@ -219,10 +219,10 @@ function ToggleCanvasEdit()
 	if CanvasMode == "view"
 	then CanvasMode = "edit"
 		 forms.settext(CanvasButton, "View Mode")
-		 if frame_start == nil
-		 then frame_start = emu.framecount()
-		 end
-		 tastudio.setplayback(frame_start)
+		 --if frame_start == nil
+		 --then --frame_start = emu.framecount()
+		 --end
+		 --tastudio.setplayback(frame_start)
 	elseif CanvasMode == "edit"
 		then CanvasMode = "view"
 			 forms.settext(CanvasButton, "Edit Mode")
@@ -282,8 +282,8 @@ function WindowForm()
 	forms.button(Window, "Stop", Stop, 205, 230)
 	
 	CanvasButton = forms.button(Window, "Edit Mode", ToggleCanvasEdit, 5, 270)
-	forms.button(Window, "Zoom +", ZoomIn, 100, 270)
-	forms.button(Window, "Zoom -", ZoomOut, 150, 270)
+	--forms.button(Window, "Zoom +", ZoomIn, 100, 270)
+	--forms.button(Window, "Zoom -", ZoomOut, 150, 270)
 
 end;
 
@@ -468,8 +468,10 @@ YdrawPlayer = 400
 CPoints = {X, Y} --TODO
 PointsX = {}
 PointsY = {}
+PointsFrame = {}
 Pindex = 1
 selected = false
+ind = nil
 
 CanvasMode = "view"
 Zoom = 1
@@ -767,18 +769,28 @@ function CreateInput()
 	then --CalcAngle();
 	end
 	
+	-- Check if user went back and edited a frame. Set new current waypoint according to frame number
+	for pf in pairs(PointsFrame) do
+		if PointsFrame[p-1] ~= nil 
+		then if emu.framecount() < PointsFrame[p-1]
+			 then p = p-1
+			 end
+		end
+	end
+	
 	if Pindex > 1 and UseCanv and p < Pindex - 1
 	then lambdax = (XPosition - PointsX[p])/(PointsX[p+1]-PointsX[p])
 		 lambday = (YPosition - PointsY[p])/(PointsY[p+1]-PointsY[p])
-		 if lambdax >= 1 or lambday >= 1
-		 then p = p + 1
+		 if lambdax >= 1 or lambday >= 1 -- Check if current waypoint has been reached. Set frame number for current one and set next waypoint as destination goal
+		 then PointsFrame[p] = emu.framecount()
+			  p = p + 1
 		 end
-
+		 
 		 if p < Pindex - 1
 		 then FollowAngle = CalcAngle(XPosition, YPosition, PointsX[p+1], PointsY[p+1])
 		 end
 	end
-		 
+	
 	if HasGameRotatingCam == "true"
 	then InputAngle = ((FollowAngle - CamAngle - Offset) % Modulo)*math.pi/(Modulo/2);
 	else InputAngle = ((FollowAngle - Offset) % Modulo)*math.pi/(Modulo/2);
@@ -821,16 +833,14 @@ function AppendWayPoint(MX, MY)
 	if Pindex == 1
 	then table.insert(PointsX, Pindex, (XPosition)) --First point must be current player position
 		 table.insert(PointsY, Pindex, (YPosition))
-		 firstPointFrame = emu.framecount() -- save the frame to jump back when the user edits
+		 table.insert(PointsFrame, Pindex, emu.framecount()) -- save the frame to jump back when the user edits
 		 Pindex = Pindex + 1
 	end
 	
 	table.insert(PointsX, Pindex, (XPosition+MX-XdrawPlayer)/Zoom)
 	table.insert(PointsY, Pindex, (YPosition+MY-YdrawPlayer)/Zoom)
+	table.insert(PointsFrame, Pindex, nil)
 			  
-			  --CPoints.X = mouseX
-			  --CPoints.Y = mouseY
-			  --table.insert(CPoints, Pindex, mouseY)
 	Pindex = Pindex + 1
 	
 end
@@ -842,18 +852,22 @@ function DeleteWayPoint(index)
 			
 			table.remove(PointsX, i)--Delete every point if first one is clicked
 			table.remove(PointsY, i)
+			table.remove(PointsFrame, i)
 			Pindex = Pindex -1
 			
 		 end
 	elseif Pindex == 3 and index > 1 
 		then table.remove(PointsX, index) --Delete the first one aswell if only two are remaining
 			 table.remove(PointsY, index)
+			 table.remove(PointsFrame, index)
 			 --print(tostring(k))
 			 table.remove(PointsX, 1)
 			 table.remove(PointsY, 1)
+			 table.remove(PointsFrame, 1)
 			 Pindex = Pindex - 2
 		else table.remove(PointsX, index)
 			 table.remove(PointsY, index)
+			 table.remove(PointsFrame, index)
 			 Pindex = Pindex - 1
 	end
 	
@@ -863,6 +877,7 @@ function SplitPath(index)
 
 	table.insert(PointsX, index+1, (PointsX[index]+(PointsX[index+1]-PointsX[index])/2))
 	table.insert(PointsY, index+1, (PointsY[index]+(PointsY[index+1]-PointsY[index])/2))
+	table.insert(PointsFrame, index+1, nil)
 	Pindex = Pindex + 1
 
 end
@@ -905,10 +920,10 @@ function DrawCanvas()
 			  -- YdrawPlayer = 400
 		 -- end
 	if mouseX >= 0 and mouseX <= 800 and mouseY >= 0 and mouseY <= 800
-	then if mouseButt["Left"] and not wasMouseButtL and not selected and CanvasMode == "edit"
+	then if mouseButt["Left"] and not wasMouseButtL and not selected and CanvasMode == "edit" -- adding a new waypoint
 		 then AppendWayPoint(mouseX, mouseY)
 		 end
-		 if mouseButt["Right"]
+		 if mouseButt["Right"] -- dragging the canvas
 		 then dmx = mouseX - oldMouseX
 			  dmy = mouseY - oldMouseY
 			  
@@ -916,11 +931,11 @@ function DrawCanvas()
 			  YdrawPlayer = YdrawPlayer + dmy/Zoom
 		 end
 		 if mouseButt["XButton1"]
-		 then ZoomIn()
+		 then --ZoomIn()
 
 		 end
 		 if mouseButt["XButton2"]
-		 then ZoomOut()
+		 then-- ZoomOut()
 
 		 end
 		 
@@ -945,6 +960,8 @@ function DrawCanvas()
 		then local x = (XdrawPlayer-(XPosition-PointsX[k])*Zoom)
 			 local y = (YdrawPlayer-(YPosition-PointsY[k])*Zoom)
 			 
+			 
+			 
 			 if k == 1
 			 then Canvas.DrawEllipse(x-5, y-5, 10, 10, 0xFF000000, 0xFFFF0000)--first one is red
 			 else Canvas.DrawEllipse(x-5, y-5, 10, 10, 0xFF000000, 0xFF00FF00)
@@ -959,7 +976,7 @@ function DrawCanvas()
 			if math.sqrt((x-mouseX)^2+(y-mouseY)^2) < 5
 			then --selected = true
 				 Pselection[k] = true
-				 Canvas.DrawText(x, y, ""..PointsX[k].."\n"..PointsY[k])
+				 Canvas.DrawText(x+16, y+16, ""..PointsX[k].."\n"..PointsY[k])
 				 Canvas.DrawEllipse(x-5, y-5, 10, 10, 0xFF000000, 0xFFFFFF00)
 				 
 				 if k > 1
@@ -969,6 +986,8 @@ function DrawCanvas()
 				 if CanvasMode == "edit"
 				 then if mouseButt["Left"] and k > 1
 					  then ind = k
+						   PointsXCopy = PointsX[ind]
+						   PointsYCopy = PointsY[ind]
 					  else ind = nil
 					  end
 					  if mouseButt["Right"]
@@ -1001,10 +1020,25 @@ function DrawCanvas()
 		dmy = mouseY - oldMouseY
 		PointsX[ind] = PointsX[ind] + dmx/Zoom
 		PointsY[ind] = PointsY[ind] + dmy/Zoom
+		--if PointsX[ind] ~= PointsXCopy or PointsY[ind] ~= PointsYCopy
+		--then print("changed "..tostring(ind)..", set "..tostring(ind-3).."as new frame")
+		   --  pointsChanged = true
+			-- if earliestChange == nil or earliestChange > ind
+			-- then earliestChange = ind
+			--		indCopy = ind
+			 --end
+			 
+		--end
 		selected = true
 	else --selected = false
-	end
 	
+		--if not mouseButt["Left"] and pointsChanged and indCopy ~= nil
+		--then tastudio.setplayback(PointsFrame[indCopy]); print("RESET FRAME")
+			--pointsChanged = false
+		--end
+	
+	end
+	---print(tostring(PointsFrame[1]))
 	--Canvas.DrawText(0,32, tostring(selected))
 	--Canvas.DrawText(0,48, tostring(Pindex))
 	wasMouseButtL = mouseButt["Left"]
