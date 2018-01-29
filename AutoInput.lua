@@ -34,7 +34,7 @@ function Start()
 						 Optimisation = forms.gettext(OptDrop);  
 					  StartFlag = true;
 					   forms.settext(StatLabel, "Started");
-					   p = 1
+					   currentWaypoint = 1
 			  end;
 		 end;
 	end;
@@ -219,10 +219,11 @@ function ToggleCanvasEdit()
 	if CanvasMode == "view"
 	then CanvasMode = "edit"
 		 forms.settext(CanvasButton, "View Mode")
-		 --if frame_start == nil
-		 --then --frame_start = emu.framecount()
-		 --end
-		 --tastudio.setplayback(frame_start)
+		 if PointsFrame[1] == nil --TODO: Better method of jumping to a previous waypoint when editing
+		 then frame_start = emu.framecount()  
+		 end	
+		 ug = frame_start -- reenable assigning input
+		 tastudio.setplayback(frame_start)
 	elseif CanvasMode == "edit"
 		then CanvasMode = "view"
 			 forms.settext(CanvasButton, "Edit Mode")
@@ -460,6 +461,8 @@ end
 Xinput = {}
 Yinput = {}
 
+
+--Canvas
 Canvas = gui.createcanvas(800,800)
 
 XdrawPlayer = 400
@@ -469,7 +472,7 @@ CPoints = {X, Y} --TODO
 PointsX = {}
 PointsY = {}
 PointsFrame = {}
-Pindex = 1
+totalPoints = 1
 selected = false
 ind = nil
 
@@ -477,10 +480,12 @@ CanvasMode = "view"
 Zoom = 1
 dmx = 0
 dmy = 0
-p = 1
+currentWaypoint = 1
 UseCanv = false
 
 firstPointFrame = 0
+--Canvas end
+
 
 StartFlag = false
 PauseFlag = false
@@ -495,6 +500,7 @@ frame_start = nil
 f=0
 f_old=0
 frameEdit = 0
+ug = emu.framecount()
 
 tastudio.clearinputchanges()
 
@@ -769,26 +775,27 @@ function CreateInput()
 	then --CalcAngle();
 	end
 	
-	-- Check if user went back and edited a frame. Set new current waypoint according to frame number
-	for pf in pairs(PointsFrame) do
-		if PointsFrame[p-1] ~= nil 
-		then if emu.framecount() < PointsFrame[p-1]
-			 then p = p-1
-			 end
-		end
-	end
+
 	
-	if Pindex > 1 and UseCanv and p < Pindex - 1
-	then lambdax = (XPosition - PointsX[p])/(PointsX[p+1]-PointsX[p])
-		 lambday = (YPosition - PointsY[p])/(PointsY[p+1]-PointsY[p])
+	if totalPoints > 1 and UseCanv and currentWaypoint < totalPoints - 1
+	then lambdax = (XPosition - PointsX[currentWaypoint])/(PointsX[currentWaypoint+1]-PointsX[currentWaypoint])
+		 lambday = (YPosition - PointsY[currentWaypoint])/(PointsY[currentWaypoint+1]-PointsY[currentWaypoint])
 		 if lambdax >= 1 or lambday >= 1 -- Check if current waypoint has been reached. Set frame number for current one and set next waypoint as destination goal
-		 then PointsFrame[p] = emu.framecount()
-			  p = p + 1
+		 then PointsFrame[currentWaypoint] = emu.framecount()
+			  currentWaypoint = currentWaypoint + 1
 		 end
 		 
-		 if p < Pindex - 1
-		 then FollowAngle = CalcAngle(XPosition, YPosition, PointsX[p+1], PointsY[p+1])
+		 if currentWaypoint < totalPoints - 1
+		 then FollowAngle = CalcAngle(XPosition, YPosition, PointsX[currentWaypoint+1], PointsY[currentWaypoint+1])
 		 end
+	else
+	end
+	
+	if currentWaypoint < totalPoints -1
+	then if CanvasMode == "view" 
+		 then client.unpause()
+		 end
+	else client.pause()
 	end
 	
 	if HasGameRotatingCam == "true"
@@ -801,7 +808,7 @@ function CreateInput()
 	elseif Optimisation == "Line drawing" then Point = LineDrawing()
 	end
 	
-	if tastudio.engaged()
+	if tastudio.engaged() and emu.framecount() >= ug
 	then if emu.islagged()
 		 then tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", Point.X)
 			  tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", Point.Y)
@@ -830,33 +837,33 @@ end
 
 function AppendWayPoint(MX, MY)
 	
-	if Pindex == 1
-	then table.insert(PointsX, Pindex, (XPosition)) --First point must be current player position
-		 table.insert(PointsY, Pindex, (YPosition))
-		 table.insert(PointsFrame, Pindex, emu.framecount()) -- save the frame to jump back when the user edits
-		 Pindex = Pindex + 1
+	if totalPoints == 1
+	then table.insert(PointsX, totalPoints, (XPosition)) --First point must be current player position
+		 table.insert(PointsY, totalPoints, (YPosition))
+		 table.insert(PointsFrame, totalPoints, emu.framecount()) -- save the frame to jump back when the user edits
+		 totalPoints = totalPoints + 1
 	end
 	
-	table.insert(PointsX, Pindex, (XPosition+MX-XdrawPlayer)/Zoom)
-	table.insert(PointsY, Pindex, (YPosition+MY-YdrawPlayer)/Zoom)
-	table.insert(PointsFrame, Pindex, nil)
+	table.insert(PointsX, totalPoints, (XPosition+MX-XdrawPlayer)/Zoom)
+	table.insert(PointsY, totalPoints, (YPosition+MY-YdrawPlayer)/Zoom)
+	table.insert(PointsFrame, totalPoints, nil)
 			  
-	Pindex = Pindex + 1
+	totalPoints = totalPoints + 1
 	
 end
 
 function DeleteWayPoint(index)
 	
 	if index == 1
-	then for i = Pindex-1, 1, -1 do
+	then for i = totalPoints-1, 1, -1 do
 			
 			table.remove(PointsX, i)--Delete every point if first one is clicked
 			table.remove(PointsY, i)
 			table.remove(PointsFrame, i)
-			Pindex = Pindex -1
+			totalPoints = totalPoints -1
 			
 		 end
-	elseif Pindex == 3 and index > 1 
+	elseif totalPoints == 3 and index > 1 
 		then table.remove(PointsX, index) --Delete the first one aswell if only two are remaining
 			 table.remove(PointsY, index)
 			 table.remove(PointsFrame, index)
@@ -864,11 +871,11 @@ function DeleteWayPoint(index)
 			 table.remove(PointsX, 1)
 			 table.remove(PointsY, 1)
 			 table.remove(PointsFrame, 1)
-			 Pindex = Pindex - 2
+			 totalPoints = totalPoints - 2
 		else table.remove(PointsX, index)
 			 table.remove(PointsY, index)
 			 table.remove(PointsFrame, index)
-			 Pindex = Pindex - 1
+			 totalPoints = totalPoints - 1
 	end
 	
 end
@@ -878,7 +885,7 @@ function SplitPath(index)
 	table.insert(PointsX, index+1, (PointsX[index]+(PointsX[index+1]-PointsX[index])/2))
 	table.insert(PointsY, index+1, (PointsY[index]+(PointsY[index+1]-PointsY[index])/2))
 	table.insert(PointsFrame, index+1, nil)
-	Pindex = Pindex + 1
+	totalPoints = totalPoints + 1
 
 end
 
@@ -993,7 +1000,7 @@ function DrawCanvas()
 					  if mouseButt["Right"]
 					  then DeleteWayPoint(k)
 					  end
-					  if mouseButt["Middle"] and k > 0 and k < Pindex - 1 and not wasMouseButtM
+					  if mouseButt["Middle"] and k > 0 and k < totalPoints - 1 and not wasMouseButtM
 					  then SplitPath(k)
 					  end
 				 end
@@ -1015,10 +1022,10 @@ function DrawCanvas()
 	end 
 	
 	
-	if ind ~= nil-- and Pselection[ind]
+	if ind ~= nil-- and not mouseButt["Right"]-- and Pselection[ind]
 	then dmx = mouseX - oldMouseX
 		dmy = mouseY - oldMouseY
-		PointsX[ind] = PointsX[ind] + dmx/Zoom
+		PointsX[ind] = PointsX[ind] + dmx/Zoom --TODO: Left+Right mouse click bug
 		PointsY[ind] = PointsY[ind] + dmy/Zoom
 		--if PointsX[ind] ~= PointsXCopy or PointsY[ind] ~= PointsYCopy
 		--then print("changed "..tostring(ind)..", set "..tostring(ind-3).."as new frame")
@@ -1040,7 +1047,7 @@ function DrawCanvas()
 	end
 	---print(tostring(PointsFrame[1]))
 	--Canvas.DrawText(0,32, tostring(selected))
-	--Canvas.DrawText(0,48, tostring(Pindex))
+	--Canvas.DrawText(0,48, tostring(totalPoints))
 	wasMouseButtL = mouseButt["Left"]
 	wasMouseButtM = mouseButt["Middle"]
 	oldMouseX = mouseX
@@ -1049,15 +1056,57 @@ function DrawCanvas()
 	Canvas.Refresh()
 end
 
+function CheckMarkers(frame)
+	--TODO: Put a marker check when greenzone invalidates, return false if the frame is outside current segment/level
+	return true --for now
+end
+
+function ResetCurrentWaypoint(frame)
+	
+	-- Check if user went back and edited a frame. Set new current waypoint according to ungreened frame number
+	for pf in pairs(PointsFrame) do
+		if PointsFrame[currentWaypoint-1] ~= nil 
+		then if frame < PointsFrame[currentWaypoint-1]
+			 then currentWaypoint = currentWaypoint-1
+			 end
+		end
+	end
+	
+end
+
+function UnGreen(index)
+
+	local frame = emu.framecount()
+	
+	if ug > index
+	then ug = index
+	end
+
+	--print(tostring(ug))
+
+	if CheckMarkers(ug)
+	then ResetCurrentWaypoint(ug)
+	end
+	
+	
+
+
+
+end
+
+tastudio.ongreenzoneinvalidated(UnGreen)
+
 while true do
 
-	local old_in = {};
+	f = emu.framecount()
+	if f > ug
+	then ug = f
+	end
 	
-	f = emu.framecount();
 	
-	if f_old ~= f then done = false; end;
+	--if f_old ~= f then done = false; end;
 	
-	f_old = f;
+	--f_old = f;
 	
 	--MarkerControl()
 	
@@ -1065,7 +1114,7 @@ while true do
 	then DrawCanvas()
 	end
 
-	if StartFlag and not PauseFlag and not done
+	if StartFlag and not PauseFlag-- and not done
 	then CreateInput()
 	end
 
