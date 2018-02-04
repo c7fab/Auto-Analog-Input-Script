@@ -1094,7 +1094,61 @@ function UnGreen(index)
 
 end
 
+function BranchSaved(index)
+	
+	local file = io.open(movie.filename()..tostring(index)..".txt", "w+")
+	
+	for k,v in pairs(PointsX) do
+		file:write(tostring(PointsX[k])..";"..tostring(PointsY[k])..";"..tostring(PointsFrame[k]).."\n")
+	end
+	
+	file:close()
+
+end
+
+function BranchLoaded(index)
+	
+	for k,v in pairs(PointsX) do
+		
+		PointsX[k] = nil
+		PointsY[k] = nil
+		PointsFrame[k] = nil
+		totalPoints = totalPoints - 1
+	
+	end
+
+	local file = io.open(movie.filename()..tostring(index)..".txt", "r")
+	
+	for i in file:lines(1) do
+
+		local str = {}
+		str = bizstring.split(i, ";")
+		
+		table.insert(PointsX, totalPoints, tonumber(str[1]))
+		table.insert(PointsY, totalPoints, tonumber(str[2]))
+		table.insert(PointsFrame, totalPoints, tonumber(str[3]))
+
+		totalPoints = totalPoints + 1
+
+	end
+	
+	file:close()
+	
+	--tastudio.setplayback(PointsFrame[1])
+
+end
+
+function BranchRemoved(index)
+
+	local file = io.open(movie.filename()..tostring(index)..".txt", "w+")
+	file:close()
+
+end
+
 tastudio.ongreenzoneinvalidated(UnGreen)
+tastudio.onbranchsave(BranchSaved)
+tastudio.onbranchload(BranchLoaded)
+tastudio.onbranchremove(BranchRemoved)
 
 while true do
 
