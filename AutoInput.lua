@@ -6,36 +6,14 @@ function Start()
 
 	if PauseFlag == false
 	then if StartFlag == false
-		 then if forms.ischecked(PosCheck) and not forms.ischecked(AngCheck)
-			  then --CalcAngle();
-				   FollowAngle = tonumber(forms.gettext(AngFollowTxt));
-				   RadiusMin = forms.gettext(RadiusMinTxt);
-				   RadiusMax = forms.gettext(RadiusMaxTxt);
-				   XPosGoto = forms.gettext(XPosGotoTxt);
-				   YPosGoto = forms.gettext(YPosGotoTxt);
-				   Optimisation = forms.gettext(OptDrop);
-				   TwoStep = forms.ischecked(TwoStepCheck);
-				   StartFlag = true;
-				   forms.settext(StatLabel, "Started");
-			  elseif not forms.ischecked(PosCheck) and forms.ischecked(AngCheck)
-				  then FollowAngle = forms.gettext(AngFollowTxt);
-					   RadiusMin = forms.gettext(RadiusMinTxt);
-					   RadiusMax = forms.gettext(RadiusMaxTxt);
-					   Optimisation = forms.gettext(OptDrop);
-					   TwoStep = forms.ischecked(TwoStepCheck);
-					   StartFlag = true;
-					   forms.settext(StatLabel, "Started");
-				  elseif forms.ischecked(PosCheck) and forms.ischecked(AngCheck)
-					  then forms.settext(StatLabel, "Error: Uncheck one checkbox");
-					  elseif not forms.ischecked(PosCheck) and not forms.ischecked(AngCheck) --Use this for the canvas right now
-						  then UseCanv = true
-							   RadiusMin = forms.gettext(RadiusMinTxt);
-					   RadiusMax = forms.gettext(RadiusMaxTxt);
-						 Optimisation = forms.gettext(OptDrop);  
-					  StartFlag = true;
-					   forms.settext(StatLabel, "Started");
-					   currentWaypoint = 1
-			  end;
+		 then RadiusMin = forms.gettext(RadiusMinTxt)
+			  RadiusMax = forms.gettext(RadiusMaxTxt)
+              Optimisation = forms.gettext(OptDrop)
+			  TwoStep = forms.ischecked(TwoStepCheck)
+			  StartFlag = true
+			  forms.settext(StatLabel, "Started")
+			  UseCanv = true
+			  currentWaypoint = 1
 		 end;
 	end;
 	
@@ -46,13 +24,13 @@ function Pause()
 
 	if StartFlag == true
 	then if PauseFlag == false
-		 then PauseFlag = true;
-			  forms.settext(StatLabel, "Paused");
-			  forms.settext(PauseButton, "Continue");
-			  client.pause();
+		 then PauseFlag = true
+			  forms.settext(StatLabel, "Paused")
+			  forms.settext(PauseButton, "Continue")
+			  client.pause()
 		 else PauseFlag = false
-			  forms.settext(StatLabel, "Started");
-			  forms.settext(PauseButton, "Pause");
+			  forms.settext(StatLabel, "Started")
+			  forms.settext(PauseButton, "Pause")
 		 end;
 	end;
 
@@ -62,11 +40,11 @@ end;
 function Stop()
 
 	if StartFlag == true
-	then StartFlag = false;
-		 PauseFlag = false;
-		 forms.settext(StatLabel, "Stopped");
-		 forms.settext(PauseButton, "Pause");
-		 client.pause();
+	then StartFlag = false
+		 PauseFlag = false
+		 forms.settext(StatLabel, "Stopped")
+		 forms.settext(PauseButton, "Pause")
+		 client.pause()
 		 UseCanv = false
 	end;
 
@@ -219,11 +197,16 @@ function ToggleCanvasEdit()
 	if CanvasMode == "view"
 	then CanvasMode = "edit"
 		 forms.settext(CanvasButton, "View Mode")
+		 
 		 if PointsFrame[1] == nil --TODO: Better method of jumping to a previous waypoint when editing
 		 then frame_start = emu.framecount()  
+			  PointsFrame[0] = frame_start
 		 end	
-		 ug = frame_start -- reenable assigning input
-		 tastudio.setplayback(frame_start)
+		 if frame_start ~= nil
+		 then ug = frame_start -- reenable assigning input
+			  tastudio.setplayback(frame_start)
+		 end
+		 
 	elseif CanvasMode == "edit"
 		then CanvasMode = "view"
 			 forms.settext(CanvasButton, "Edit Mode")
@@ -243,22 +226,55 @@ function ZoomOut()
 	
 end
 
+function ResetZoom()
+
+	Zoom = 1
+	
+end
+
+function ToggleFollow()
+
+	
+
+end
+
+function ViewPlayer()
+
+	XdrawPlayer = 400
+	YdrawPlayer = 400
+
+end
+
+function ViewWaypoint()
+
+	
+
+end
+
+	saveWindow = forms.newform(300, 200, "Save Current Session?")
+	
+	local yesButt = forms.button(saveWindow, "Yes", Yes, 5, 5)
+	local noButt = forms.button(saveWindow, "No", No, 80, 5)
+	local cancelButt = forms.button(saveWindow, "Cancel", Cancel, 155, 5)
+
+end
+
 -- This function creates the main window.
 function WindowForm()
 
 	local OptTable = {"Line drawing"};--, , ,"Rotate around","None"
 	
 	Window = forms.newform(300, 500, "Auto analog input")
-
-	PosCheck = forms.checkbox(Window, "Go to position:", 5, 20)
-	forms.label(Window, "X =", 110, 10, 30, 20)
-	XPosGotoTxt = forms.textbox(Window, "0", 120, 20, nil, 140, 5)
-	forms.label(Window, "Y =", 110, 40, 30, 20)
-	YPosGotoTxt = forms.textbox(Window, "0", 120, 20, nil, 140, 35)
 	
-	AngCheck = forms.checkbox(Window, "Follow angle:", 5, 75)
-	forms.label(Window, "a =", 110, 80, 30, 20)
-	AngFollowTxt = forms.textbox(Window, "0", 120, 20, nil, 140, 75)
+	--PosCheck = forms.checkbox(Window, "Go to position:", 5, 20)
+	--forms.label(Window, "X =", 110, 10, 30, 20)
+	--XPosGotoTxt = forms.textbox(Window, "0", 120, 20, nil, 140, 5)
+	--forms.label(Window, "Y =", 110, 40, 30, 20)
+	--YPosGotoTxt = forms.textbox(Window, "0", 120, 20, nil, 140, 35)
+	
+	--AngCheck = forms.checkbox(Window, "Follow angle:", 5, 75)
+	--forms.label(Window, "a =", 110, 80, 30, 20)
+	--AngFollowTxt = forms.textbox(Window, "0", 120, 20, nil, 140, 75)
 	
 	forms.label(Window, "Radius: min =", 5, 120, 75, 20)
 	RadiusMinTxt = forms.textbox(Window, "67", 30, 20, nil, 80, 115)
@@ -283,10 +299,13 @@ function WindowForm()
 	forms.button(Window, "Stop", Stop, 205, 230)
 	
 	CanvasButton = forms.button(Window, "Edit Mode", ToggleCanvasEdit, 5, 270)
-	--forms.button(Window, "Zoom +", ZoomIn, 100, 270)
-	--forms.button(Window, "Zoom -", ZoomOut, 150, 270)
+	forms.button(Window, "Zoom +", ZoomIn, 100, 270)
+	forms.button(Window, "Zoom -", ZoomOut, 150, 270)
+	forms.button(Window, "Zoom 1", ResetZoom, 200, 270)
+	
 
-end;
+
+end
 
  -- Address window
 -- This function checks wheter the user has typed in the memory addresses or not.
@@ -463,7 +482,7 @@ Yinput = {}
 
 
 --Canvas
-Canvas = gui.createcanvas(800,800)
+Canvas = gui.createcanvas(800,820)
 
 XdrawPlayer = 400
 YdrawPlayer = 400
@@ -482,11 +501,19 @@ dmx = 0
 dmy = 0
 currentWaypoint = 1
 UseCanv = false
+followPlayer = true
+
+statusStripItems = {toggleFollowItem = {x = 1, y = 801, toolTip = "Toggle Follow Player", clickFunction = ToggleFollow},
+					viewPlayerItem = {x = 21, y = 801, toolTip = "Reset View to Player", clickFunction = ViewPlayer }, 
+					viewWaypointItem = {x = 41, y = 801, toolTip = "Set View next Waypoint", clickFunction = ViewWaypoint }, 
+					ZoomInItem = {x = 61, y = 801, toolTip = "Zoom In", clickFunction = ZoomIn}, 
+					ZoomOutItem = {x = 81, y = 801, toolTip = "Zoom Out", clickFunction = ZoomOut}, 
+					ResetZoomItem = {x = 101, y = 801, toolTip = "Reset Zoom", clickFunction = ResetZoom} }
 
 firstPointFrame = 0
 --Canvas end
 
-
+askSave = ""
 StartFlag = false
 PauseFlag = false
 X = 0; Y = 0
@@ -500,7 +527,7 @@ frame_start = nil
 f=0
 f_old=0
 frameEdit = 0
-ug = emu.framecount()
+ug = 0
 
 tastudio.clearinputchanges()
 
@@ -771,12 +798,6 @@ function CreateInput()
 		 if HasGameRotatingCam == "true" then CamAngle = memory.readfloat(CamAngAddr, true);end;
 	end;
 	
-	if forms.ischecked(PosCheck)
-	then --CalcAngle();
-	end
-	
-
-	
 	if totalPoints > 1 and UseCanv and currentWaypoint < totalPoints - 1
 	then lambdax = (XPosition - PointsX[currentWaypoint])/(PointsX[currentWaypoint+1]-PointsX[currentWaypoint])
 		 lambday = (YPosition - PointsY[currentWaypoint])/(PointsY[currentWaypoint+1]-PointsY[currentWaypoint])
@@ -823,13 +844,14 @@ end;
 
 function MarkerControl()
 
-	marker = tastudio.getmarker(emu.framecount())
+	--marker = tastudio.getmarker(emu.framecount())
 	
-	if bizstring.startswith(marker, "a=")
-	then s = bizstring.remove(marker, 0,2)
-		 forms.settext(AngFollowTxt, s)
-		 FollowAngle = tonumber(s);
-	end
+	--if bizstring.startswith(marker, "a=")
+	--then s = bizstring.remove(marker, 0,2)
+	--	 forms.settext(AngFollowTxt, s)
+	--	 FollowAngle = tonumber(s);
+	--end
+
 
 end
 
@@ -844,8 +866,8 @@ function AppendWayPoint(MX, MY)
 		 totalPoints = totalPoints + 1
 	end
 	
-	table.insert(PointsX, totalPoints, (XPosition+MX-XdrawPlayer)/Zoom)
-	table.insert(PointsY, totalPoints, (YPosition+MY-YdrawPlayer)/Zoom)
+	table.insert(PointsX, totalPoints, XPosition+(MX-XdrawPlayer)/Zoom)
+	table.insert(PointsY, totalPoints, YPosition+(MY-YdrawPlayer)/Zoom)
 	table.insert(PointsFrame, totalPoints, nil)
 			  
 	totalPoints = totalPoints + 1
@@ -898,22 +920,28 @@ function DrawCanvas()
 	--selected = false
 	--TODO:resizable canvas
 	--TODO:Zooming
-	XdrawPlayer = XdrawPlayer
-	YdrawPlayer = YdrawPlayer
+	--XdrawPlayer = XdrawPlayer
+	--YdrawPlayer = YdrawPlayer
+	
+	
+	--Origin lines
+	Canvas.DrawLine((XdrawPlayer-XPosition*Zoom), 0, (XdrawPlayer-XPosition*Zoom), 800, 0x55000000)
+	Canvas.DrawLine(0, (YdrawPlayer-YPosition*Zoom), 800, (YdrawPlayer-YPosition*Zoom), 0x55000000)
+	Canvas.DrawText((XdrawPlayer-XPosition*Zoom), (YdrawPlayer-YPosition*Zoom), "(0;0)")
+	
 	--Player coordinate lines
 	Canvas.DrawLine(XdrawPlayer, 0, XdrawPlayer, 800, 0x55FF0000)
 	Canvas.DrawLine(0, YdrawPlayer, 800, YdrawPlayer, 0x55FF0000)
 	Canvas.DrawText(XdrawPlayer+1, 785, XPosition)
 	Canvas.DrawText(0, YdrawPlayer+1, YPosition)
+	Canvas.DrawEllipse(XdrawPlayer-10, YdrawPlayer-10, 20, 20, 0xFFFF0000)
 	
-	--Origin lines
-	Canvas.DrawLine(XdrawPlayer-XPosition, 0, XdrawPlayer-XPosition, 800, 0x55000000)
-	Canvas.DrawLine(0, YdrawPlayer-YPosition, 800, YdrawPlayer-YPosition, 0x55000000)
-	Canvas.DrawText(XdrawPlayer-XPosition, YdrawPlayer-YPosition, "(0;0)")
+	
+
 	
 	--Canvas.DrawText(0, 64, tostring(XdrawPlayer))
 	
-	Canvas.DrawEllipse(XdrawPlayer-10, YdrawPlayer-10, 20, 20, 0xFFFF0000)
+	
 	
 	mouseX = Canvas.GetMouseX()
 	mouseY = Canvas.GetMouseY()
@@ -934,21 +962,23 @@ function DrawCanvas()
 		 then dmx = mouseX - oldMouseX
 			  dmy = mouseY - oldMouseY
 			  
-			  XdrawPlayer = XdrawPlayer + dmx/Zoom
-			  YdrawPlayer = YdrawPlayer + dmy/Zoom
+			  XdrawPlayer = XdrawPlayer + dmx--/Zoom
+			  YdrawPlayer = YdrawPlayer + dmy--/Zoom
+			  
 		 end
+ 
 		 if mouseButt["XButton1"]
-		 then --ZoomIn()
+		 then ZoomIn()
 
 		 end
 		 if mouseButt["XButton2"]
-		 then-- ZoomOut()
+		 then ZoomOut()
 
 		 end
 		 
 		 
 		 --print(tostring(mouseButt[Wheel]))
-		 Canvas.DrawText(0,0, " "..(XPosition+mouseX-XdrawPlayer)/Zoom.."\n"..(YPosition+mouseY-YdrawPlayer)/Zoom.."\n"..Zoom)
+		 Canvas.DrawText(0,0, " "..XPosition+(mouseX-XdrawPlayer)/Zoom.."\n"..YPosition+(mouseY-YdrawPlayer)/Zoom.."\n"..Zoom)
 		
 	else 
 	end
@@ -1048,6 +1078,31 @@ function DrawCanvas()
 	---print(tostring(PointsFrame[1]))
 	--Canvas.DrawText(0,32, tostring(selected))
 	--Canvas.DrawText(0,48, tostring(totalPoints))
+	
+		--StatusStrip
+	Canvas.DrawRectangle(0, 800, 800, 20, 0x00000000, 0xFF999999)
+	
+	
+	for k,v in pairs(statusStripItems) do
+	
+		local x = statusStripItems[k].x
+		local y = statusStripItems[k].y
+		
+		if mouseX > x and mouseX < x+15 and mouseY > y and mouseY < y+15
+		then Canvas.DrawRectangle(x, y, 17, 17, 0xFFBBBBBB, 0xFFAAAAAA)
+			 Canvas.DrawText(x+8, y-18, statusStripItems[k].toolTip)
+			 
+			 if mouseButt["Left"]
+			 then statusStripItems[k].clickFunction()
+			 end
+		
+		else Canvas.DrawRectangle(x, y, 17, 17, 0xFFBBBBBB, 0xFFDDDDDD)
+		end
+		
+	
+	end
+	
+	
 	wasMouseButtL = mouseButt["Left"]
 	wasMouseButtM = mouseButt["Middle"]
 	oldMouseX = mouseX
@@ -1056,9 +1111,44 @@ function DrawCanvas()
 	Canvas.Refresh()
 end
 
+function GetMarkerNoteAboveFrame(frame)
+
+	local markerText
+	local i = frame
+	
+	repeat 
+	
+		markerText = tastudio.getmarker(i)
+		i = i - 1
+	
+	until i == 0 or markerText ~= ""
+	
+	return markerText
+
+end
+
 function CheckMarkers(frame)
 	--TODO: Put a marker check when greenzone invalidates, return false if the frame is outside current segment/level
-	return true --for now
+	--# as first char in marker note means new session
+	--. as first char in marker note means end of session
+	
+--	local markerText = GetMarkerNoteAboveFrame(frame)
+	--local i = frame
+	--local test = bizstring.startswith(markerText, "#")
+	
+
+	
+	--local markerFrame = i
+	--print(tostring(i))
+	
+	--if i > frame
+	--then print("outside")
+	--	return false --frame is outside current segemet
+	--e-lse print("inside")
+		--return true
+	--end
+	
+	 return true --for now
 end
 
 function ResetCurrentWaypoint(frame)
@@ -1080,13 +1170,16 @@ function UnGreen(index)
 	
 	if ug > index
 	then ug = index
+		 
+		--print("asdasdfdsf")
 	end
-
-	--print(tostring(ug))
-
+	
 	if CheckMarkers(ug)
 	then ResetCurrentWaypoint(ug)
 	end
+	--print(tostring(ug))
+
+	
 	
 	
 
@@ -1096,7 +1189,9 @@ end
 
 function BranchSaved(index)
 	
-	local file = io.open(movie.filename()..tostring(index)..".txt", "w+")
+	local file = io.open(movie.filename()..tostring(index)..".ptl", "w+")
+	
+	file:write(tostring(PointsFrame[0].."\n"))
 	
 	for k,v in pairs(PointsX) do
 		file:write(tostring(PointsX[k])..";"..tostring(PointsY[k])..";"..tostring(PointsFrame[k]).."\n")
@@ -1108,6 +1203,16 @@ end
 
 function BranchLoaded(index)
 	
+	if index ~= -1
+	then local backup = io.open(movie.filename().."-1.ptl", "w+")
+		 
+		 backup:write(tostring(PointsFrame[0].."\n"))
+	
+		 for k,v in pairs(PointsX) do
+			backup:write(tostring(PointsX[k])..";"..tostring(PointsY[k])..";"..tostring(PointsFrame[k]).."\n")
+		 end
+	end
+	
 	for k,v in pairs(PointsX) do
 		
 		PointsX[k] = nil
@@ -1117,42 +1222,104 @@ function BranchLoaded(index)
 	
 	end
 
-	local file = io.open(movie.filename()..tostring(index)..".txt", "r")
+	local file = io.open(movie.filename()..tostring(index)..".ptl", "r")
 	
-	for i in file:lines(1) do
+	if file ~= nil
+	then PointsFrame[0] = tonumber(file:read("*line"))
+	
+		 for i in file:lines(2) do
 
-		local str = {}
-		str = bizstring.split(i, ";")
+			local str = {}
+			str = bizstring.split(i, ";")
 		
-		table.insert(PointsX, totalPoints, tonumber(str[1]))
-		table.insert(PointsY, totalPoints, tonumber(str[2]))
-		table.insert(PointsFrame, totalPoints, tonumber(str[3]))
+			table.insert(PointsX, totalPoints, tonumber(str[1]))
+			table.insert(PointsY, totalPoints, tonumber(str[2]))
+			table.insert(PointsFrame, totalPoints, tonumber(str[3]))
 
-		totalPoints = totalPoints + 1
-
+			totalPoints = totalPoints + 1
+		 end
+		 file:close()
+		 tastudio.setplayback(PointsFrame[0])
 	end
 	
-	file:close()
+	--print(tostring(frame_start).."\n"..tostring(PointsFrame[0]))
 	
-	--tastudio.setplayback(PointsFrame[1])
 
 end
 
 function BranchRemoved(index)
-
-	local file = io.open(movie.filename()..tostring(index)..".txt", "w+")
-	file:close()
+	
+	local br = tastudio.getbranches()
+	
+	for i = table.getn(br), index , -1 do
+	
+		--bla = os.rename(movie.filename()..tostring(i+1)..".ptl", movie.filename()..tostring(i)..".ptl.temp")
+		--bla2 = os.rename(movie.filename()..tostring(i)..".ptl.temp", movie.filename()..tostring(i)..".ptl")
+		--print(i)
+		--print(tostring(bla))
+		--print(tostring(bla2))
+		--num branches 5
+		--delete #2
+		--new num branches 4
+		-- #2 gets #3 filename
+		-- #3 gets #4 filename
+		-- #4 gets #5 filename
+		
+	end
 
 end
+
+function Exit()
+	
+	local file = io.open(movie.filename().."c.ptl", "w+")
+	
+	file:write(tostring(PointsFrame[0].."\n"))
+	
+	for k,v in pairs(PointsX) do
+		file:write(tostring(PointsX[k])..";"..tostring(PointsY[k])..";"..tostring(PointsFrame[k]).."\n")
+	end
+	
+	file:close()
+	
+	forms.destroyall()
+	
+end
+
 
 tastudio.ongreenzoneinvalidated(UnGreen)
 tastudio.onbranchsave(BranchSaved)
 tastudio.onbranchload(BranchLoaded)
 tastudio.onbranchremove(BranchRemoved)
 
+event.onexit(Exit)
+
+if tastudio.engaged()
+then local file = io.open(movie.filename().."c.ptl", "r")
+	 if file ~= nil
+	 then PointsFrame[0] = tonumber(file:read("*line"))
+	
+		  for i in file:lines(2) do
+
+			local str = {}
+			str = bizstring.split(i, ";")
+		
+			table.insert(PointsX, totalPoints, tonumber(str[1]))
+			table.insert(PointsY, totalPoints, tonumber(str[2]))
+			table.insert(PointsFrame, totalPoints, tonumber(str[3]))
+
+			totalPoints = totalPoints + 1
+		  end
+		 file:close()
+		 tastudio.setplayback(PointsFrame[0])
+	 end
+	
+end
+	
+
 while true do
 
-	f = emu.framecount()
+	local f = emu.framecount()
+	
 	if f > ug
 	then ug = f
 	end
@@ -1180,11 +1347,14 @@ while true do
 	then Add()
 	elseif inget.E == true and wasE == nil
 	then Sub()
+	elseif inget.P == true and wasP == nil
+	then print(PointsX)
+		 print(PointsY)
 	end
 	
 	wasR = inget.R
 	wasE = inget.E
-
+	wasP = inget.P
 
 	emu.yield()
 
