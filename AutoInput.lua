@@ -251,14 +251,6 @@ function ViewWaypoint()
 
 end
 
-	saveWindow = forms.newform(300, 200, "Save Current Session?")
-	
-	local yesButt = forms.button(saveWindow, "Yes", Yes, 5, 5)
-	local noButt = forms.button(saveWindow, "No", No, 80, 5)
-	local cancelButt = forms.button(saveWindow, "Cancel", Cancel, 155, 5)
-
-end
-
 -- This function creates the main window.
 function WindowForm()
 
