@@ -2,11 +2,16 @@
 -- Main window
 -- This function runs after the user clicked on the Start button.
 memory.usememorydomain("RDRAM")
+require("AutoInputAPI")
+
 function Start()
 
 	if PauseFlag == false
 	then if StartFlag == false
-		 then RadiusMin = forms.gettext(RadiusMinTxt)
+		 then if editMode == "Edit"
+			  then ToggleCanvasEdit()
+			  end
+			  RadiusMin = forms.gettext(RadiusMinTxt)
 			  RadiusMax = forms.gettext(RadiusMaxTxt)
               Optimisation = forms.gettext(OptDrop)
 			  TwoStep = forms.ischecked(TwoStepCheck)
@@ -110,7 +115,7 @@ function Add()
 	tastudio.applyinputchanges()
 	
 	-- if HasGameRotatingCam == "true"
-	-- then FollowAngle = ((math.atan2(Ybest, Xbest) + CamAngle + Offset) % Modulo)*Modulo/2/math.pi % Modulo --TODO:
+	-- then FollowAngle = ((math.atan2(Ybest, Xbest) + camera.rotation.y + Offset) % Modulo)*Modulo/2/math.pi % Modulo --TODO:
 	-- else FollowAngle = ((math.atan2(Ybest, Xbest) + Offset) % Modulo)*Modulo/2/math.pi % Modulo
 	-- end 
 	-- forms.settext(AngFollowTxt, tonumber(FollowAngle))
@@ -172,7 +177,7 @@ function Sub()
 	tastudio.applyinputchanges()
 	
 	-- if HasGameRotatingCam == "true"
-	-- then FollowAngle = ((math.atan2(Ybest, Xbest) + CamAngle + Offset) % Modulo)*Modulo/2/math.pi % Modulo --TODO:
+	-- then FollowAngle = ((math.atan2(Ybest, Xbest) + camera.rotation.y + Offset) % Modulo)*Modulo/2/math.pi % Modulo --TODO:
 	-- else FollowAngle = ((math.atan2(Ybest, Xbest) + Offset) % Modulo)*Modulo/2/math.pi % Modulo
 	-- end 
 
@@ -181,12 +186,12 @@ function Sub()
 
 end;
 
-function CalcAngle(Xstart, Ystart, Xgoal, Ygoal)
+function CalcAngle(Xstart, Zstart, Xgoal, Zgoal)
 
 	local DeltaX = Xgoal - Xstart
-	local DeltaY = Ygoal - Ystart
+	local DeltaZ = Zgoal - Zstart
 		--TODO: Games require different formula???
-	local NewAngle = ((math.atan2(-DeltaY , DeltaX) * (Modulo/2) / math.pi) ) % Modulo
+	local NewAngle = ((math.atan2(-DeltaZ , DeltaX) * (settings.angle.modulo/2) / math.pi) ) % settings.angle.modulo
 
 	return NewAngle
 		
@@ -197,14 +202,15 @@ function ToggleCanvasEdit()
 	if CanvasMode == "view"
 	then CanvasMode = "edit"
 		 forms.settext(CanvasButton, "View Mode")
+
+		 --if PointsFrame[2] == nil --TODO: Better method of jumping to a previous waypoint when editing
+		 --then PointsFrame[1] = emu.framecount() 
+		 --end	
 		 
-		 if PointsFrame[1] == nil --TODO: Better method of jumping to a previous waypoint when editing
-		 then frame_start = emu.framecount()  
-			  PointsFrame[0] = frame_start
-		 end	
-		 if frame_start ~= nil
-		 then ug = frame_start -- reenable assigning input
-			  tastudio.setplayback(frame_start)
+		 if PointsFrame[1] ~= nil
+		then ug = PointsFrame[1] -- reenable assigning input
+			  tastudio.setplayback(PointsFrame[1])
+			  currentWaypoint = 1
 		 end
 		 
 	elseif CanvasMode == "edit"
@@ -291,9 +297,9 @@ function WindowForm()
 	forms.button(Window, "Stop", Stop, 205, 230)
 	
 	CanvasButton = forms.button(Window, "Edit Mode", ToggleCanvasEdit, 5, 270)
-	forms.button(Window, "Zoom +", ZoomIn, 100, 270)
-	forms.button(Window, "Zoom -", ZoomOut, 150, 270)
-	forms.button(Window, "Zoom 1", ResetZoom, 200, 270)
+	forms.button(Window, "Zoom +", ZoomIn, 100, 270, 50, 23)
+	forms.button(Window, "Zoom -", ZoomOut, 150, 270, 50, 23)
+	forms.button(Window, "Zoom 1", ResetZoom, 200, 270, 50, 23)
 	
 
 
@@ -307,7 +313,7 @@ function Check()
 	
 	success = false;
 	XPosAddr = forms.gettext(XPosAddrTxt)
-	YPosAddr = forms.gettext(YPosAddrTxt)
+	ZPosAddr = forms.gettext(ZPosAddrTxt)
 	MovAngAddr = forms.gettext(MovAngAddrTxt)
 	CamAngAddr = forms.gettext(CamAngAddrTxt)
 	Offset = forms.gettext(OffsetTxt)
@@ -316,7 +322,8 @@ function Check()
 	DeadzoneMin = forms.gettext(MinTxt)
 	DeadzoneMax = forms.gettext(MaxTxt)
 	
-	if XPosAddr ~= "0x" and YPosAddr ~= "0x" and MovAngAddr ~= "0x" and Offset ~= ""
+	
+	if XPosAddr ~= "0x" and ZPosAddr ~= "0x" and MovAngAddr ~= "0x" and Offset ~= ""
 	then success = true
 	end
 	
@@ -351,12 +358,17 @@ function Check()
 	then success = false
 	end
 	
+	if forms.ischecked(useAPICheck)
+	then success = true
+	end
+	
 	if success == true
 	then -- Writes the addresses into a text file.
 		 -- The user doesn't have to type in the addresses everytime.
-		 AddrFile = io.open(ROMname, "a")
-		 AddrFile:write(tonumber(XPosAddr), "\n", 
-						tonumber(YPosAddr), "\n", 
+		 SettingsFile = io.open(ROMname, "a")
+		 SettingsFile:write(tostring(forms.ischecked(useAPICheck)), "\n",
+						tonumber(XPosAddr), "\n", 
+						tonumber(ZPosAddr), "\n", 
 						tonumber(MovAngAddr), "\n", 
 						tostring(HasGameRotatingCam), "\n", 
 						tonumber(CamAngAddr), "\n",
@@ -365,51 +377,54 @@ function Check()
 						tonumber(Modulo), "\n",
 						DeadzoneMin, "\n",
 						DeadzoneMax)
-		 AddrFile:close()
+		 SettingsFile:close()
 		 
 		 -- Closes the form where the user typed in the addresses.
-		 forms.destroy(Addr)
+		 forms.destroy(Settings)
 		 WindowForm()
 	end;
 	
 end;
 
 -- This function creates the form where the user needs to type in memory addresses.
-function AddrForm()
+function SettingsForm()
 	
-	local TypeTable = {"Byte","Word","DWord", "Float"};
+	local TypeTable = {"Byte","Word","DWord", "Float"}
 	
-	Addr = forms.newform(280, 370, "Settings");
+	Settings = forms.newform(280, 370, "Settings")
 	
-	forms.label(Addr, "Horizontal position addresses:", 5, 5, 280, 20);
-	forms.label(Addr, "X:",5, 30, 20, 20);
-	XPosAddrTxt = forms.textbox(Addr, "0x", 70, 20, nil, 25, 25);
-	forms.label(Addr, "Y:",105, 30, 20, 20); 
-	YPosAddrTxt = forms.textbox(Addr, "0x", 70, 20, nil, 125, 25);
+	forms.label(Settings, "Horizontal position addresses:", 5, 5, 280, 20)
+	forms.label(Settings, "X:",5, 30, 20, 20)
+	XPosAddrTxt = forms.textbox(Settings, "0x", 70, 20, nil, 25, 25)
+	forms.label(Settings, "Z:",105, 30, 20, 20)
+	ZPosAddrTxt = forms.textbox(Settings, "0x", 70, 20, nil, 125, 25)
 	
-	forms.label(Addr, "Horizontal movement angle address:", 5, 55, 350, 20);
-	MovAngAddrTxt = forms.textbox(Addr, "0x", 70, 20, nil, 10, 75);
-	--FloatCheck = forms.checkbox(Addr, "Float?", 120, 75);
+	forms.label(Settings, "Horizontal movement angle address:", 5, 55, 350, 20)
+	MovAngAddrTxt = forms.textbox(Settings, "0x", 70, 20, nil, 10, 75)
+	--FloatCheck = forms.checkbox(Settings, "Float?", 120, 75)
 	
-	forms.label(Addr, "Horizontal camera angle address:", 5, 105, 340, 20);
-	CamAngAddrTxt = forms.textbox(Addr, "0x", 70, 20, nil, 10, 125);
+	forms.label(Settings, "Horizontal camera angle address:", 5, 105, 340, 20)
+	CamAngAddrTxt = forms.textbox(Settings, "0x", 70, 20, nil, 10, 125)
 	
-	forms.label(Addr, "Offset for the analog stick angle:", 5, 155, 360, 20)
-	OffsetTxt = forms.textbox(Addr, "", 70, 20, nil, 10, 175);
+	forms.label(Settings, "Offset for the analog stick angle:", 5, 155, 360, 20)
+	OffsetTxt = forms.textbox(Settings, "", 70, 20, nil, 10, 175)
 	
-	forms.label(Addr, "Unit system for angles:", 5, 205, 300, 20);
-	forms.label(Addr, "Type:", 5, 230, 40, 20);
-	TypeDrop = forms.dropdown(Addr, TypeTable , 45, 225, 80, 20);
-	forms.label(Addr, "modulo:", 130, 230, 45, 20);
-	ModTxt = forms.textbox(Addr, "", 60, 20, nil, 180, 225);
+	forms.label(Settings, "Unit system for angles:", 5, 205, 300, 20)
+	forms.label(Settings, "Type:", 5, 230, 40, 20)
+	TypeDrop = forms.dropdown(Settings, TypeTable , 45, 225, 80, 20)
+	forms.label(Settings, "modulo:", 130, 230, 45, 20)
+	ModTxt = forms.textbox(Settings, "", 60, 20, nil, 180, 225)
 	
-	forms.label(Addr, "Deadzone:", 5, 255, 100, 20);
-	forms.label(Addr, "min:", 5, 280, 30, 20);
-	MinTxt = forms.textbox(Addr, "", 30, 20, nil, 35, 275);
-	forms.label(Addr, "max:", 70, 280, 30, 20);
-	MaxTxt = forms.textbox(Addr, "", 30, 20, nil, 105, 275);
+	forms.label(Settings, "Deadzone:", 5, 255, 100, 20)
+	forms.label(Settings, "min:", 5, 280, 30, 20)
+	MinTxt = forms.textbox(Settings, "", 30, 20, nil, 35, 275)
+	forms.label(Settings, "max:", 70, 280, 30, 20)
+	MaxTxt = forms.textbox(Settings, "", 30, 20, nil, 105, 275)
 	
-	forms.button(Addr, "Done", Check, 5, 300);
+	--forms.label(Settings, "Use API:", 5 , 300, 90, 20)
+	useAPICheck = forms.checkbox(Settings, "Uses API:", 5, 300)
+	
+	forms.button(Settings, "Done", Check, 150, 300)
 
 end;
 
@@ -418,49 +433,48 @@ end;
 -- The file is in the main BizHawk folder and is called "<romname>.txt".
 -- The main window will open.
 
-XPosAddr = nil
-YPosAddr = nil
-MovAngAddr = nil
-HasGameRotatingCam = nil
-CamAngAddr = nil
-CamAngAddr = nil
-Offset = nil
-Type = nil
-Modulo = nil
-DeadzoneMin = nil
-DeadzoneMax = nil
+--useAPI = nil
+--XPosAddr = nil
+--ZPosAddr = nil
+--MovAngAddr = nil
+--HasGameRotatingCam = nil
+--CamAngAddr = nil
+--CamAngAddr = nil
+--Offset = nil
+--Type = nil
+--Modulo = nil
+--DeadzoneMin = nil
+--DeadzoneMax = nil
 
-AddrFile = nil
+SettingsFile = nil
 
 ROMname = gameinfo.getromname()..".ais"
-AddrFile = io.open(ROMname, "r")
+SettingsFile = io.open(ROMname, "r")
 
-if AddrFile ~= nil
-then XPosAddr = tonumber(AddrFile:read("*line"))
-     YPosAddr = tonumber(AddrFile:read("*line"))
-     MovAngAddr = tonumber(AddrFile:read("*line"))
-	 HasGameRotatingCam = tostring(AddrFile:read("*line"))
-	 CamAngAddr = tonumber(AddrFile:read("*line"))
-	 Offset = tonumber(AddrFile:read("*line"))
-	 Type = tostring(AddrFile:read("*line"))
-	 Modulo = tonumber(AddrFile:read("*line"))
-	 DeadzoneMin = tonumber(AddrFile:read("*line"))
-	 DeadzoneMax = tonumber(AddrFile:read("*line"))
+if SettingsFile ~= nil
+then useAPI = tostring(SettingsFile:read("*line"))
 	 
+	 if useAPI == "false"
+	 then XPosAddr = tonumber(SettingsFile:read("*line"))
+		  ZPosAddr = tonumber(SettingsFile:read("*line"))
+		  MovAngAddr = tonumber(SettingsFile:read("*line"))
+		  HasGameRotatingCam = tostring(SettingsFile:read("*line"))
+		  CamAngAddr = tonumber(SettingsFile:read("*line"))
+		  settings.angle.offset = tonumber(SettingsFile:read("*line"))
+		  Type = tostring(SettingsFile:read("*line"))
+		  settings.angle.modulo = tonumber(SettingsFile:read("*line"))
+		  settings.deadzone.minimum = tonumber(SettingsFile:read("*line"))
+		  settings.deadzone.maximum = tonumber(SettingsFile:read("*line"))
+	 else 
+	 end
 	 
 	 WindowForm()
-	 AddrFile:close()
+	 SettingsFile:close()
 end;
  
 -- If there's no content in the file a window will open, where the user types in the memory addresses once.
-if AddrFile == nil
-then AddrForm()
-	--Prevents crash.
-	-- XPosAddr = 0;
-	 --YPosAddr = 0;
-	 --MovAngAddr = 0;
-	 --CamAngAddr = 0;
-	
+if SettingsFile == nil
+then SettingsForm()
 end
 
 
@@ -474,16 +488,17 @@ Yinput = {}
 
 
 --Canvas
+
 Canvas = gui.createcanvas(800,820)
 
 XdrawPlayer = 400
 YdrawPlayer = 400
 
-CPoints = {X, Y} --TODO
+CPoints = {X, Z} --TODO
 PointsX = {}
-PointsY = {}
+PointsZ = {}
 PointsFrame = {}
-totalPoints = 1
+totalPoints = 0
 selected = false
 ind = nil
 
@@ -496,13 +511,21 @@ UseCanv = false
 followPlayer = true
 
 statusStripItems = {toggleFollowItem = {x = 1, y = 801, toolTip = "Toggle Follow Player", clickFunction = ToggleFollow},
-					viewPlayerItem = {x = 21, y = 801, toolTip = "Reset View to Player", clickFunction = ViewPlayer }, 
-					viewWaypointItem = {x = 41, y = 801, toolTip = "Set View next Waypoint", clickFunction = ViewWaypoint }, 
+					viewPlayerItem = {x = 21, y = 801, toolTip = "Reset View to Player", clickFunction = ViewPlayer}, 
+					viewWaypointItem = {x = 41, y = 801, toolTip = "Set View next Waypoint", clickFunction = ViewWaypoint}, 
 					ZoomInItem = {x = 61, y = 801, toolTip = "Zoom In", clickFunction = ZoomIn}, 
 					ZoomOutItem = {x = 81, y = 801, toolTip = "Zoom Out", clickFunction = ZoomOut}, 
-					ResetZoomItem = {x = 101, y = 801, toolTip = "Reset Zoom", clickFunction = ResetZoom} }
+					ResetZoomItem = {x = 101, y = 801, toolTip = "Reset Zoom", clickFunction = ResetZoom} 
+				   }
 
-firstPointFrame = 0
+rightClickItems = {editMode = {mouseOverPoint = {setPosition = {text = "Set new position", clickEvent = nil }, 
+												 splitPath = {text = "Split Path", clickEvent = SplitPath}
+												}
+							  }
+
+				  }
+				  
+					
 --Canvas end
 
 askSave = ""
@@ -510,18 +533,19 @@ StartFlag = false
 PauseFlag = false
 X = 0; Y = 0
 FollowAngle = 0
-CamAngle = 0
 InputAngle = 0
 Radius = 0
 steps = 0
 done = false
-frame_start = nil
 f=0
 f_old=0
 frameEdit = 0
 ug = 0
 
+
+
 tastudio.clearinputchanges()
+
 
 function sgn(x)
 
@@ -592,8 +616,8 @@ function Bresenham(xStart, yStart, xEnd, yEnd, mode, xCurrent, yCurrent)
 			
 		local radius = math.sqrt(x^2+y^2)
 		
-		if (math.abs(x) >= DeadzoneMin and math.abs(y) >= DeadzoneMin and 
-			math.abs(x) <= DeadzoneMax and math.abs(y) <= DeadzoneMax and 
+		if (math.abs(x) >= settings.deadzone.minimum and math.abs(y) >= settings.deadzone.minimum and 
+			math.abs(x) <= settings.deadzone.maximum and math.abs(y) <= settings.deadzone.maximum and 
 			radius >= tonumber(RadiusMin) and radius <= tonumber(RadiusMax))
 		then local pt_a = math.atan2(y, x)
 			 if mode == "add"
@@ -757,8 +781,8 @@ function NoOptimisation(radius)
 	
 	local Point = {X, Y}
 		
-	Point.X = math.floor(math.cos(InputAngle)*radius+0.5);
-	Point.Y = math.floor(math.sin(InputAngle)*radius+0.5);
+	Point.X = math.floor(math.cos(InputAngle)*radius+0.5)
+	Point.Y = math.floor(math.sin(InputAngle)*radius+0.5)
 	
 	return Point
 
@@ -771,49 +795,61 @@ end;
 
 function CreateInput()
 
-	XPosition = memory.readfloat(XPosAddr, true);
-	YPosition = memory.readfloat(YPosAddr, true);
-	
 	local Point = {}
-	
-	if Type == "Byte" 
-	then MovAngle = memory.read_u8(MovAngAddr);
-		 if HasGameRotatingCam == "true" then CamAngle = memory.read_u8(CamAngAddr); end;
-	elseif Type == "Word"
-	then MovAngle = memory.read_u16_be(MovAngAddr); 
-		 if HasGameRotatingCam == "true" then CamAngle = memory.read_u16_be(CamAngAddr); end;
-	elseif Type == "DWord"
-	then MovAngle = memory.read_u32_be(MovAngAddr);
-		 if HasGameRotatingCam == "true" then CamAngle = memory.read_u32_be(CamAngAddr); end;
-	elseif Type == "Float"
-	then MovAngle = memory.readfloat(MovAngAddr, true);
-		 if HasGameRotatingCam == "true" then CamAngle = memory.readfloat(CamAngAddr, true);end;
-	end;
-	
-	if totalPoints > 1 and UseCanv and currentWaypoint < totalPoints - 1
-	then lambdax = (XPosition - PointsX[currentWaypoint])/(PointsX[currentWaypoint+1]-PointsX[currentWaypoint])
-		 lambday = (YPosition - PointsY[currentWaypoint])/(PointsY[currentWaypoint+1]-PointsY[currentWaypoint])
-		 if lambdax >= 1 or lambday >= 1 -- Check if current waypoint has been reached. Set frame number for current one and set next waypoint as destination goal
-		 then PointsFrame[currentWaypoint] = emu.framecount()
-			  currentWaypoint = currentWaypoint + 1
+
+	if useAPI == "false"
+	then player.position.x = memory.readfloat(XPosAddr, true)
+		 player.position.z = memory.readfloat(ZPosAddr, true)
+
+		 if Type == "Byte" 
+		 then MovAngle = memory.read_u8(MovAngAddr)
+			  if HasGameRotatingCam == "true" 
+			  then camera.rotation.y = memory.read_u8(CamAngAddr)
+			  end
+		 elseif Type == "Word"
+			 then MovAngle = memory.read_u16_be(MovAngAddr)
+				  if HasGameRotatingCam == "true" 
+				  then camera.rotation.y = memory.read_u16_be(CamAngAddr)
+				  end
+		 elseif Type == "DWord"
+			 then MovAngle = memory.read_u32_be(MovAngAddr)
+				  if HasGameRotatingCam == "true" 
+				  then camera.rotation.y = memory.read_u32_be(CamAngAddr)
+				  end
+		 elseif Type == "Float"
+			 then MovAngle = memory.readfloat(MovAngAddr, true)
+				  if HasGameRotatingCam == "true" 
+				  then camera.rotation.y = memory.readfloat(CamAngAddr, true)
+				  end
+		 end
+	end
+
+	if totalPoints > 1 and UseCanv and currentWaypoint < totalPoints and currentWaypoint >= 1 --and PointsFrame[currentWaypoint+1] ~= nil
+	then local lambdax = (player.position.x - PointsX[currentWaypoint])/(PointsX[currentWaypoint+1]-PointsX[currentWaypoint])
+		 local lambdaz = (player.position.z - PointsZ[currentWaypoint])/(PointsZ[currentWaypoint+1]-PointsZ[currentWaypoint])
+		 --TODO: This is broken
+		 if (lambdax >= 1 or lambdaz >= 1)-- Check if current waypoint has been reached. Set frame number for current one and set next waypoint as destination goal
+		 then currentWaypoint = currentWaypoint + 1
+			  --print("tp:"..totalPoints.."\ncwp:"..currentWaypoint)
+			  PointsFrame[currentWaypoint] = emu.framecount()  
 		 end
 		 
-		 if currentWaypoint < totalPoints - 1
-		 then FollowAngle = CalcAngle(XPosition, YPosition, PointsX[currentWaypoint+1], PointsY[currentWaypoint+1])
+		 if currentWaypoint < totalPoints
+		 then FollowAngle = CalcAngle(player.position.x, player.position.z, PointsX[currentWaypoint+1], PointsZ[currentWaypoint+1])
 		 end
 	else
 	end
 	
-	if currentWaypoint < totalPoints -1
+	if currentWaypoint < totalPoints
 	then if CanvasMode == "view" 
-		 then client.unpause()
+		 then --client.unpause()
 		 end
 	else client.pause()
 	end
 	
 	if HasGameRotatingCam == "true"
-	then InputAngle = ((FollowAngle - CamAngle - Offset) % Modulo)*math.pi/(Modulo/2);
-	else InputAngle = ((FollowAngle - Offset) % Modulo)*math.pi/(Modulo/2);
+	then InputAngle = ((FollowAngle - camera.rotation.y - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
+	else InputAngle = ((FollowAngle - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
 	end;
 	
 	if Optimisation == "None" then Point = NoOptimisation(RadiusMax);
@@ -851,16 +887,16 @@ end
 
 function AppendWayPoint(MX, MY)
 	
-	if totalPoints == 1
-	then table.insert(PointsX, totalPoints, (XPosition)) --First point must be current player position
-		 table.insert(PointsY, totalPoints, (YPosition))
-		 table.insert(PointsFrame, totalPoints, emu.framecount()) -- save the frame to jump back when the user edits
+	if totalPoints == 0
+	then table.insert(PointsX, totalPoints+1, (player.position.x)) --First point must be current player position
+		 table.insert(PointsZ, totalPoints+1, (player.position.z))
+		 table.insert(PointsFrame, totalPoints+1, emu.framecount()) -- save the frame to jump back when the user edits
 		 totalPoints = totalPoints + 1
 	end
 	
-	table.insert(PointsX, totalPoints, XPosition+(MX-XdrawPlayer)/Zoom)
-	table.insert(PointsY, totalPoints, YPosition+(MY-YdrawPlayer)/Zoom)
-	table.insert(PointsFrame, totalPoints, nil)
+	table.insert(PointsX, totalPoints+1, player.position.x+(MX-XdrawPlayer)/Zoom)
+	table.insert(PointsZ, totalPoints+1, player.position.z+(MY-YdrawPlayer)/Zoom)
+	table.insert(PointsFrame, totalPoints+1, nil)
 			  
 	totalPoints = totalPoints + 1
 	
@@ -869,45 +905,104 @@ end
 function DeleteWayPoint(index)
 	
 	if index == 1
-	then for i = totalPoints-1, 1, -1 do
+	then for i = totalPoints, 1, -1 do
 			
 			table.remove(PointsX, i)--Delete every point if first one is clicked
-			table.remove(PointsY, i)
+			table.remove(PointsZ, i)
 			table.remove(PointsFrame, i)
 			totalPoints = totalPoints -1
 			
 		 end
-	elseif totalPoints == 3 and index > 1 
+	elseif totalPoints == 2 and index > 0 
 		then table.remove(PointsX, index) --Delete the first one aswell if only two are remaining
-			 table.remove(PointsY, index)
+			 table.remove(PointsZ, index)
 			 table.remove(PointsFrame, index)
 			 --print(tostring(k))
 			 table.remove(PointsX, 1)
-			 table.remove(PointsY, 1)
+			 table.remove(PointsZ, 1)
 			 table.remove(PointsFrame, 1)
 			 totalPoints = totalPoints - 2
 		else table.remove(PointsX, index)
-			 table.remove(PointsY, index)
+			 table.remove(PointsZ, index)
 			 table.remove(PointsFrame, index)
 			 totalPoints = totalPoints - 1
 	end
-	
+
 end
 
 function SplitPath(index)
 
 	table.insert(PointsX, index+1, (PointsX[index]+(PointsX[index+1]-PointsX[index])/2))
-	table.insert(PointsY, index+1, (PointsY[index]+(PointsY[index+1]-PointsY[index])/2))
+	table.insert(PointsZ, index+1, (PointsZ[index]+(PointsZ[index+1]-PointsZ[index])/2))
 	table.insert(PointsFrame, index+1, nil)
 	totalPoints = totalPoints + 1
+
+end
+
+function DrawPlayer(x, y, radius)
+
+	 Canvas.DrawEllipse(x-radius*Zoom, y-radius*Zoom, 2*radius*Zoom, 2*radius*Zoom, 0xFFFF0000, 0x55FF0000)
+
+ end
+
+function DrawCamera()
+
+	if camera.position.x ~= nil and camera.position.z ~= nil
+	then if camera.position.target.x ~= nil and camera.position.target.z ~= nil
+		 then Canvas.DrawAxis(XdrawPlayer-(player.position.x-camera.position.target.x)*Zoom, 
+							  YdrawPlayer-(player.position.z-camera.position.target.z)*Zoom, 10, 0xFFFF0000)
+							  
+			  Canvas.DrawLine(XdrawPlayer-(player.position.x-camera.position.x)*Zoom, 
+							  YdrawPlayer-(player.position.z-camera.position.z)*Zoom, 
+							  XdrawPlayer-(player.position.x-camera.position.target.x)*Zoom, 
+							  YdrawPlayer-(player.position.z-camera.position.target.z)*Zoom, 0xFF000000)
+		 end
+		 
+		 if camera.focus.x ~= nil and camera.focus.z ~= nil
+		 then if camera.focus.target.x ~= nil and camera.focus.target.z ~= nil
+			  then Canvas.DrawAxis(XdrawPlayer-(player.position.x-camera.focus.target.x)*Zoom, 
+								   YdrawPlayer-(player.position.z-camera.focus.target.z)*Zoom, 10, 0xFF00FFFF)
+								   
+				   Canvas.DrawLine(XdrawPlayer-(player.position.x-camera.focus.target.x)*Zoom, 
+								   YdrawPlayer-(player.position.z-camera.focus.target.z)*Zoom, 
+								   XdrawPlayer-(player.position.x-camera.focus.x)*Zoom, 
+								   YdrawPlayer-(player.position.z-camera.focus.z)*Zoom, 0xFF000000)			   
+			  end
+			  Canvas.DrawAxis(XdrawPlayer-(player.position.x-camera.focus.x)*Zoom, 
+							  YdrawPlayer-(player.position.z-camera.focus.z)*Zoom, 10, 0xFF0000FF)
+			  
+			  
+			  Canvas.DrawLine(XdrawPlayer-(player.position.x-camera.position.x)*Zoom, 
+							  YdrawPlayer-(player.position.z-camera.position.z)*Zoom, 
+							  XdrawPlayer-(player.position.x-camera.focus.x)*Zoom, 
+							  YdrawPlayer-(player.position.z-camera.focus.z)*Zoom, 0xFF000000)
+		 end
+		 
+		 Canvas.DrawAxis(XdrawPlayer-(player.position.x-camera.position.x)*Zoom, 
+						 YdrawPlayer-(player.position.z-camera.position.z)*Zoom, 10, 0xFF00FF00)
+	else
+	end
+
+end
+
+function DrawObject(x, y, radius)	
+
+	--Canvas.DrawEllipse(x-10*Zoom, y-10*Zoom, 2*10*Zoom, 2*10*Zoom, 0xFF00FF00, 0x5500FF00)
+	Canvas.DrawEllipse(XdrawPlayer-(player.position.x-object.position.x)*Zoom-radius*Zoom, 
+	YdrawPlayer-(player.position.z-object.position.z)*Zoom-radius*Zoom,
+	2*object.collision.radius*Zoom, 2*object.collision.radius*Zoom, 0xFF00FF00, 0x5500FF00)
+	
+	
+			 Canvas.DrawAxis(XdrawPlayer-(player.position.x-object.position.x)*Zoom, 
+						 YdrawPlayer-(player.position.z-object.position.z)*Zoom, 10, 0xFF000000)
 
 end
 
 function DrawCanvas()
 
 	Canvas.Clear(0xFFFFFFFF)
-	XPosition = memory.readfloat(XPosAddr, true);
-	YPosition = memory.readfloat(YPosAddr, true);
+	--XPosition = memory.readfloat(XPosAddr, true);
+	--ZPosition = memory.readfloat(YPosAddr, true);
 	Pselection = {}
 	--selected = false
 	--TODO:resizable canvas
@@ -915,25 +1010,44 @@ function DrawCanvas()
 	--XdrawPlayer = XdrawPlayer
 	--YdrawPlayer = YdrawPlayer
 	
-	
 	--Origin lines
-	Canvas.DrawLine((XdrawPlayer-XPosition*Zoom), 0, (XdrawPlayer-XPosition*Zoom), 800, 0x55000000)
-	Canvas.DrawLine(0, (YdrawPlayer-YPosition*Zoom), 800, (YdrawPlayer-YPosition*Zoom), 0x55000000)
-	Canvas.DrawText((XdrawPlayer-XPosition*Zoom), (YdrawPlayer-YPosition*Zoom), "(0;0)")
+	Canvas.DrawLine((XdrawPlayer-player.position.x*Zoom), 0, (XdrawPlayer-player.position.x*Zoom), 800, 0x55000000)
+	Canvas.DrawLine(0, (YdrawPlayer-player.position.z*Zoom), 800, (YdrawPlayer-player.position.z*Zoom), 0x55000000)
+	Canvas.DrawText((XdrawPlayer-player.position.x*Zoom), (YdrawPlayer-player.position.z*Zoom), "(0;0)")
 	
 	--Player coordinate lines
 	Canvas.DrawLine(XdrawPlayer, 0, XdrawPlayer, 800, 0x55FF0000)
 	Canvas.DrawLine(0, YdrawPlayer, 800, YdrawPlayer, 0x55FF0000)
-	Canvas.DrawText(XdrawPlayer+1, 785, XPosition)
-	Canvas.DrawText(0, YdrawPlayer+1, YPosition)
-	Canvas.DrawEllipse(XdrawPlayer-10, YdrawPlayer-10, 20, 20, 0xFFFF0000)
+	Canvas.DrawText(XdrawPlayer+1, 785, player.position.x)
+	Canvas.DrawText(0, YdrawPlayer+1, player.position.z)
+	
+	for k,v in pairs(objects) do
+		--gui.drawText(100, 0+i*16, objects[i+1].active)
+		if objects[k].active ~= 0 or objects[k].active ~= nil
+		then local x = (XdrawPlayer-(player.position.x-objects[k].position.x))
+		     local z = (YdrawPlayer-(player.position.z-objects[k].position.z))
+			 --gui.drawText(100, 0+i*16, x..";"..z)
+			-- print(x.."	"..z)
+			--print(objects[i+1].position.x)
+			--DrawObject(x, z, objects[k].collision.radius)
+		end
+		--print(objects[k].position)
+	end
+	
+	DrawObject(XdrawPlayer-(player.position.x-object.position.x), 
+				YdrawPlayer-(player.position.z-object.position.z),
+				object.collision.radius)
 	
 	
-
+	if player.collision.radius == nil
+	then DrawPlayer(XdrawPlayer, YdrawPlayer, 10)
+	else DrawPlayer(XdrawPlayer, YdrawPlayer, player.collision.radius)
+	end	
+	
+	
+	DrawCamera()
 	
 	--Canvas.DrawText(0, 64, tostring(XdrawPlayer))
-	
-	
 	
 	mouseX = Canvas.GetMouseX()
 	mouseY = Canvas.GetMouseY()
@@ -967,62 +1081,58 @@ function DrawCanvas()
 		 then ZoomOut()
 
 		 end
-		 
-		 
+		 		 
 		 --print(tostring(mouseButt[Wheel]))
-		 Canvas.DrawText(0,0, " "..XPosition+(mouseX-XdrawPlayer)/Zoom.."\n"..YPosition+(mouseY-YdrawPlayer)/Zoom.."\n"..Zoom)
+		 Canvas.DrawText(0,0, " "..player.position.x+(mouseX-XdrawPlayer)/Zoom.."\n"..player.position.z+(mouseY-YdrawPlayer)/Zoom.."\n"..Zoom)
 		
 	else 
 	end
-	
-	
-
 	
 	for k,v in pairs(PointsX) do
 	
 		--print(tostring(k).." "..tostring(v))
 		
 		--print("x "..tostring(PointsX[k]))
-		--print("y "..tostring(PointsY[k]))
-		
-		if PointsX[k] ~= nil and PointsY[k] ~= nil
-		then local x = (XdrawPlayer-(XPosition-PointsX[k])*Zoom)
-			 local y = (YdrawPlayer-(YPosition-PointsY[k])*Zoom)
+		--print("y "..tostring(PointsZ[k]))
+		--print(k)
+		if PointsX[k] ~= nil and PointsZ[k] ~= nil
+		then local x = (XdrawPlayer-(player.position.x-PointsX[k])*Zoom)
+			 local z = (YdrawPlayer-(player.position.z-PointsZ[k])*Zoom)
 			 
 			 
 			 
 			 if k == 1
-			 then Canvas.DrawEllipse(x-5, y-5, 10, 10, 0xFF000000, 0xFFFF0000)--first one is red
-			 else Canvas.DrawEllipse(x-5, y-5, 10, 10, 0xFF000000, 0xFF00FF00)
+			 then Canvas.DrawEllipse(x-5, z-5, 10, 10, 0xFF000000, 0xFFFF0000)--first one is red
+			 else Canvas.DrawEllipse(x-5, z-5, 10, 10, 0xFF000000, 0xFF00FF00)
 			 end
-			 --Canvas.DrawText(x, y, ""..PointsX[k].."\n"..PointsY[k])
-			-- Canvas.DrawText(0, 16+16*k, ""..tostring(PointsX[k]).." , "..tostring(PointsY[k]))
+			 --Canvas.DrawText(x, z, ""..PointsX[k].."\n"..PointsZ[k])
+			-- Canvas.DrawText(0, 16+16*k, ""..tostring(PointsX[k]).." , "..tostring(PointsZ[k]))
 			
 			if k > 1
-			then Canvas.DrawLine((XdrawPlayer-(XPosition-PointsX[k-1])*Zoom), (YdrawPlayer-(YPosition-PointsY[k-1])*Zoom), x, y)
+			then Canvas.DrawLine((XdrawPlayer-(player.position.x-PointsX[k-1])*Zoom), (YdrawPlayer-(player.position.z-PointsZ[k-1])*Zoom), x, z)
 			end
 			
-			if math.sqrt((x-mouseX)^2+(y-mouseY)^2) < 5
+			if math.sqrt((x-mouseX)^2+(z-mouseY)^2) < 5
 			then --selected = true
 				 Pselection[k] = true
-				 Canvas.DrawText(x+16, y+16, ""..PointsX[k].."\n"..PointsY[k])
-				 Canvas.DrawEllipse(x-5, y-5, 10, 10, 0xFF000000, 0xFFFFFF00)
+				 Canvas.DrawText(x+16, z+16, ""..k.."\n"..PointsX[k].."\n"..PointsZ[k].."\n"..tostring(PointsFrame[k]))
+				 Canvas.DrawEllipse(x-5, z-5, 10, 10, 0xFF000000, 0xFFFFFF00)
 				 
 				 if k > 1
-				 then Canvas.DrawLine((XdrawPlayer-(XPosition-PointsX[k-1])*Zoom), (YdrawPlayer-(YPosition-PointsY[k-1])*Zoom), x, y, 0xFFFFFF00)
+				 then Canvas.DrawLine((XdrawPlayer-(player.position.x-PointsX[k-1])*Zoom), (YdrawPlayer-(player.position.z-PointsZ[k-1])*Zoom), x, z, 0xFFFFFF00)
 				 end
 				 
 				 if CanvasMode == "edit"
 				 then if mouseButt["Left"] and k > 1
 					  then ind = k
 						   PointsXCopy = PointsX[ind]
-						   PointsYCopy = PointsY[ind]
+						   PointsZCopy = PointsZ[ind]
 					  else ind = nil
 					  end
 					  if mouseButt["Right"]
 					  then DeleteWayPoint(k)
 					  end
-					  if mouseButt["Middle"] and k > 0 and k < totalPoints - 1 and not wasMouseButtM
+					  if mouseButt["Middle"] and k > 0 and k < totalPoints and not wasMouseButtM
 					  then SplitPath(k)
 					  end
 				 end
@@ -1030,7 +1140,7 @@ function DrawCanvas()
 				Pselection[k] = false
 			end
 
-			--Canvas.DrawText(x, y+36, tostring(Pselection[k]).."\n"..tostring(ind))
+			--Canvas.DrawText(x, z+36, tostring(Pselection[k]).."\n"..tostring(ind))
 		end
 		
 		
@@ -1044,12 +1154,12 @@ function DrawCanvas()
 	end 
 	
 	
-	if ind ~= nil-- and not mouseButt["Right"]-- and Pselection[ind]
+	if ind ~= nil --and not mouseButt["Right"]-- and Pselection[ind]
 	then dmx = mouseX - oldMouseX
 		dmy = mouseY - oldMouseY
 		PointsX[ind] = PointsX[ind] + dmx/Zoom --TODO: Left+Right mouse click bug
-		PointsY[ind] = PointsY[ind] + dmy/Zoom
-		--if PointsX[ind] ~= PointsXCopy or PointsY[ind] ~= PointsYCopy
+		PointsZ[ind] = PointsZ[ind] + dmy/Zoom
+		--if PointsX[ind] ~= PointsXCopy or PointsZ[ind] ~= PointsYCopy
 		--then print("changed "..tostring(ind)..", set "..tostring(ind-3).."as new frame")
 		   --  pointsChanged = true
 			-- if earliestChange == nil or earliestChange > ind
@@ -1071,9 +1181,8 @@ function DrawCanvas()
 	--Canvas.DrawText(0,32, tostring(selected))
 	--Canvas.DrawText(0,48, tostring(totalPoints))
 	
-		--StatusStrip
+	--StatusStrip
 	Canvas.DrawRectangle(0, 800, 800, 20, 0x00000000, 0xFF999999)
-	
 	
 	for k,v in pairs(statusStripItems) do
 	
@@ -1090,8 +1199,6 @@ function DrawCanvas()
 		
 		else Canvas.DrawRectangle(x, y, 17, 17, 0xFFBBBBBB, 0xFFDDDDDD)
 		end
-		
-	
 	end
 	
 	
@@ -1144,16 +1251,17 @@ function CheckMarkers(frame)
 end
 
 function ResetCurrentWaypoint(frame)
-	
-	-- Check if user went back and edited a frame. Set new current waypoint according to ungreened frame number
-	for pf in pairs(PointsFrame) do
-		if PointsFrame[currentWaypoint-1] ~= nil 
-		then if frame < PointsFrame[currentWaypoint-1]
-			 then currentWaypoint = currentWaypoint-1
+
+	--Check if user went back and edited a frame. Set new current waypoint according to ungreened frame number
+	for k,v in pairs(PointsFrame) do
+		if PointsFrame[k] ~= nil 
+		then if frame < PointsFrame[k]
+			 then PointsFrame[k] = nil 
+				  currentWaypoint = currentWaypoint-1
 			 end
 		end
+
 	end
-	
 end
 
 function UnGreen(index)
@@ -1162,13 +1270,14 @@ function UnGreen(index)
 	
 	if ug > index
 	then ug = index
-		 
+	 	if CheckMarkers(ug)
+		then ResetCurrentWaypoint(ug)
+		end
 		--print("asdasdfdsf")
 	end
-	
-	if CheckMarkers(ug)
-	then ResetCurrentWaypoint(ug)
-	end
+
+
+
 	--print(tostring(ug))
 
 	
@@ -1178,15 +1287,15 @@ function UnGreen(index)
 
 
 end
-
+--TODO: Save current waypoint in files instead of PointsFrame[1] twice
 function BranchSaved(index)
 	
 	local file = io.open(movie.filename()..tostring(index)..".ptl", "w+")
 	
-	file:write(tostring(PointsFrame[0].."\n"))
+	--file:write(tostring(PointsFrame[1].."\n"))
 	
 	for k,v in pairs(PointsX) do
-		file:write(tostring(PointsX[k])..";"..tostring(PointsY[k])..";"..tostring(PointsFrame[k]).."\n")
+		file:write(tostring(PointsX[k])..";"..tostring(PointsZ[k])..";"..tostring(PointsFrame[k]).."\n")
 	end
 	
 	file:close()
@@ -1198,17 +1307,17 @@ function BranchLoaded(index)
 	if index ~= -1
 	then local backup = io.open(movie.filename().."-1.ptl", "w+")
 		 
-		 backup:write(tostring(PointsFrame[0].."\n"))
+		-- backup:write(tostring(PointsFrame[1].."\n"))
 	
 		 for k,v in pairs(PointsX) do
-			backup:write(tostring(PointsX[k])..";"..tostring(PointsY[k])..";"..tostring(PointsFrame[k]).."\n")
+			backup:write(tostring(PointsX[k])..";"..tostring(PointsZ[k])..";"..tostring(PointsFrame[k]).."\n")
 		 end
 	end
 	
 	for k,v in pairs(PointsX) do
 		
 		PointsX[k] = nil
-		PointsY[k] = nil
+		PointsZ[k] = nil
 		PointsFrame[k] = nil
 		totalPoints = totalPoints - 1
 	
@@ -1217,25 +1326,22 @@ function BranchLoaded(index)
 	local file = io.open(movie.filename()..tostring(index)..".ptl", "r")
 	
 	if file ~= nil
-	then PointsFrame[0] = tonumber(file:read("*line"))
+	then --PointsFrame[1] = tonumber(file:read("*line"))
 	
-		 for i in file:lines(2) do
+		 for i in file:lines(1) do
 
 			local str = {}
 			str = bizstring.split(i, ";")
 		
-			table.insert(PointsX, totalPoints, tonumber(str[1]))
-			table.insert(PointsY, totalPoints, tonumber(str[2]))
-			table.insert(PointsFrame, totalPoints, tonumber(str[3]))
+			table.insert(PointsX, totalPoints+1, tonumber(str[1]))
+			table.insert(PointsZ, totalPoints+1, tonumber(str[2]))
+			table.insert(PointsFrame, totalPoints+1, tonumber(str[3]))
 
 			totalPoints = totalPoints + 1
 		 end
 		 file:close()
-		 tastudio.setplayback(PointsFrame[0])
+		 tastudio.setplayback(PointsFrame[1])
 	end
-	
-	--print(tostring(frame_start).."\n"..tostring(PointsFrame[0]))
-	
 
 end
 
@@ -1265,10 +1371,10 @@ function Exit()
 	
 	local file = io.open(movie.filename().."c.ptl", "w+")
 	
-	file:write(tostring(PointsFrame[0].."\n"))
+	--file:write(tostring(PointsFrame[1].."\n"))
 	
 	for k,v in pairs(PointsX) do
-		file:write(tostring(PointsX[k])..";"..tostring(PointsY[k])..";"..tostring(PointsFrame[k]).."\n")
+		file:write(tostring(PointsX[k])..";"..tostring(PointsZ[k])..";"..tostring(PointsFrame[k]).."\n")
 	end
 	
 	file:close()
@@ -1276,7 +1382,6 @@ function Exit()
 	forms.destroyall()
 	
 end
-
 
 tastudio.ongreenzoneinvalidated(UnGreen)
 tastudio.onbranchsave(BranchSaved)
@@ -1288,25 +1393,24 @@ event.onexit(Exit)
 if tastudio.engaged()
 then local file = io.open(movie.filename().."c.ptl", "r")
 	 if file ~= nil
-	 then PointsFrame[0] = tonumber(file:read("*line"))
+	 then --PointsFrame[1] = tonumber(file:read("*line"))
 	
-		  for i in file:lines(2) do
+		  for i in file:lines(1) do
 
 			local str = {}
 			str = bizstring.split(i, ";")
 		
-			table.insert(PointsX, totalPoints, tonumber(str[1]))
-			table.insert(PointsY, totalPoints, tonumber(str[2]))
-			table.insert(PointsFrame, totalPoints, tonumber(str[3]))
+			table.insert(PointsX, totalPoints+1, tonumber(str[1]))
+			table.insert(PointsZ, totalPoints+1, tonumber(str[2]))
+			table.insert(PointsFrame, totalPoints+1, tonumber(str[3]))
 
 			totalPoints = totalPoints + 1
 		  end
 		 file:close()
-		 tastudio.setplayback(PointsFrame[0])
+		 tastudio.setplayback(PointsFrame[1])
 	 end
 	
-end
-	
+
 
 while true do
 
@@ -1339,9 +1443,6 @@ while true do
 	then Add()
 	elseif inget.E == true and wasE == nil
 	then Sub()
-	elseif inget.P == true and wasP == nil
-	then print(PointsX)
-		 print(PointsY)
 	end
 	
 	wasR = inget.R
@@ -1351,5 +1452,5 @@ while true do
 	emu.yield()
 
 end
-
+end
 
