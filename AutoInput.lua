@@ -301,7 +301,9 @@ function WindowForm()
 	forms.button(Window, "Zoom -", ZoomOut, 150, 270, 50, 23)
 	forms.button(Window, "Zoom 1", ResetZoom, 200, 270, 50, 23)
 	
-
+	autoUnpauseCheck = forms.checkbox(Window, "Auto Unpause:", 10, 300)
+	
+	
 
 end
 
@@ -541,7 +543,7 @@ f=0
 f_old=0
 frameEdit = 0
 ug = 0
-
+autoUnpause = false
 
 
 tastudio.clearinputchanges()
@@ -828,7 +830,7 @@ function CreateInput()
 	then local lambdax = (player.position.x - PointsX[currentWaypoint])/(PointsX[currentWaypoint+1]-PointsX[currentWaypoint])
 		 local lambdaz = (player.position.z - PointsZ[currentWaypoint])/(PointsZ[currentWaypoint+1]-PointsZ[currentWaypoint])
 		 --TODO: This is broken
-		 if (lambdax >= 1 or lambdaz >= 1)-- Check if current waypoint has been reached. Set frame number for current one and set next waypoint as destination goal
+		 if (lambdax >= 1 and lambdaz >= 0.9 or lambdax >= 0.9 and lambdaz >= 1)-- Check if current waypoint has been reached. Set frame number for current one and set next waypoint as destination goal
 		 then currentWaypoint = currentWaypoint + 1
 			  --print("tp:"..totalPoints.."\ncwp:"..currentWaypoint)
 			  PointsFrame[currentWaypoint] = emu.framecount()  
@@ -841,8 +843,9 @@ function CreateInput()
 	end
 	
 	if currentWaypoint < totalPoints
-	then if CanvasMode == "view" 
-		 then --client.unpause()
+	then autoUnpause = forms.ischecked(autoUnpauseCheck)
+		 if CanvasMode == "view" and autoUnpause
+		 then client.unpause()
 		 end
 	else client.pause()
 	end
@@ -939,10 +942,86 @@ function SplitPath(index)
 
 end
 
+function DrawArrow(x1, y1, x2, y2, color)
+
+	local alpha = math.atan2(x2-x1, y2-y1)
+
+	Canvas.DrawLine(x1, y1, x2, y2, color)
+	
+	--Canvas.DrawLine(x2, y2, x2+math.cos(alpha+math.pi/2.5)*20, y2-math.sin(alpha+math.pi/2.5)*20)
+	--Canvas.DrawLine(x2, y2, x2+math.cos(alpha-math.pi/2.5+math.pi)*20, y2-math.sin(alpha-math.pi/2.5+math.pi)*20)
+	
+	if math.sqrt((x2-x1)^2+(y2-y1)^2) > 20
+	then Canvas.DrawPolygon({{x2, y2}, 
+							{x2+math.cos(alpha+math.pi/2.5)*15, y2-math.sin(alpha+math.pi/2.5)*15}, 
+							{x2+math.cos(alpha-math.pi/2.5+math.pi)*15, y2-math.sin(alpha-math.pi/2.5+math.pi)*15}},
+							color, color)
+	end
+	
+end
+
 function DrawPlayer(x, y, radius)
 
-	 Canvas.DrawEllipse(x-radius*Zoom, y-radius*Zoom, 2*radius*Zoom, 2*radius*Zoom, 0xFFFF0000, 0x55FF0000)
+	local fullInfoDraw = false
 
+	if player.position.previous.x ~= nil and player.position.previous.z ~= nil
+	then local dx = player.position.x-player.position.previous.x
+		 local dz = player.position.z-player.position.previous.z
+	
+		 Canvas.DrawEllipse(x-(dx+radius)*Zoom, y-(dz+radius)*Zoom,
+							2*radius*Zoom, 2*radius*Zoom, 0x55FF0000, 0x22FF0000)
+							
+		 Canvas.DrawAxis(x-dx*Zoom, y-dz*Zoom, 5, 0x55FF0000)			
+
+		 DrawArrow(x-dx*Zoom, y-dz*Zoom, x, y, 0x55FF0000)
+		 
+		 --TODO: Don't draw text below player hitbox
+		 if math.sqrt((x-dx*Zoom-mouseX)^2+(y-dz*Zoom-mouseY)^2) < 5 and math.sqrt(dx^2+dz^2)*Zoom >= 20
+		 then Canvas.DrawText(x-dx*Zoom+16, y-dz*Zoom+16, 
+						 "Previous Position:\nX:"..player.position.previous.x.."\nY:"..player.position.previous.y.."\nZ:"..player.position.previous.z,
+							  0xFF000000, 0xEEDDDDDD)
+		 elseif math.sqrt(dx^2+dz^2)*Zoom < 20
+			 then fullInfoDraw = true
+		 end
+	end
+	
+	Canvas.DrawEllipse(x-radius*Zoom, y-radius*Zoom, 2*radius*Zoom, 2*radius*Zoom, 0xFFFF0000, 0x55FF0000)--Hitbox
+	DrawArrow(x, y, x+math.cos(player.rotation.y*math.pi/(settings.angle.modulo/2))*radius*Zoom, y-math.sin(player.rotation.y*math.pi/(settings.angle.modulo/2))*radius*Zoom, 0xFF880000)
+	
+	if player.velocity.x ~= nil and player.velocity.z ~= nil
+	then local dx = x+player.velocity.x*Zoom
+		 local dz = y+player.velocity.z*Zoom
+	
+		 DrawArrow(x, y, dx, dz, 0xFFFF0000)
+						
+		 if math.sqrt((dx-mouseX)^2+(dz-mouseY)^2) < 5 and math.sqrt(player.velocity.x^2+player.velocity.z^2)*Zoom >= 20
+		 then Canvas.DrawText(dx+16, dz+16, 
+							  "Velocity:\nX:"..player.velocity.x.."\nY:"..player.velocity.y.."\nZ:"..player.velocity.z,
+							  0xFF000000, 0xEEDDDDDD)
+		 elseif math.sqrt(player.velocity.x^2+player.velocity.z^2)*Zoom < 20
+			 then fullInfoDraw = true
+		 end
+	end
+	
+	if math.sqrt((x-mouseX)^2+(y-mouseY)^2) < 5 and not fullInfoDraw
+	then Canvas.DrawText(x+16, y+16, 
+						 "Position:\nX:"..player.position.x.."\nY:"..player.position.y.."\nZ:"..player.position.z,
+							  0xFF000000, 0xEEDDDDDD)
+	elseif math.sqrt((x-mouseX)^2+(y-mouseY)^2) < 5 and fullInfoDraw
+		then Canvas.DrawText(x+16, y+16, 
+						 "Position:\n	X:"..tostring(player.position.x).."\n	Y:"..tostring(player.position.y).."\n	Z:"..tostring(player.position.z)..
+						 "\nPrevious Position:\n	X:"..tostring(player.position.previous.x).."\n	Y:"..tostring(player.position.previous.y).."\n	Z:"..tostring(player.position.previous.z)..
+						 "\nVelocity:\n	X:"..tostring(player.velocity.x).."\n	Y:"..tostring(player.velocity.y).."\n	Z:"..tostring(player.velocity.z).."\n	H:"..tostring(player.velocity.horizontal).."\n	V:"..tostring(player.velocity.vertical),
+						 0xFF000000, 0xEEDDDDDD)--TODO:Finish this
+	end
+	
+	
+	
+	Canvas.DrawText(XdrawPlayer+1, 785, player.position.x)
+	Canvas.DrawText(0, YdrawPlayer+1, player.position.z)
+	
+	
+	
  end
 
 function DrawCamera()
@@ -952,10 +1031,10 @@ function DrawCamera()
 		 then Canvas.DrawAxis(XdrawPlayer-(player.position.x-camera.position.target.x)*Zoom, 
 							  YdrawPlayer-(player.position.z-camera.position.target.z)*Zoom, 10, 0xFFFF0000)
 							  
-			  Canvas.DrawLine(XdrawPlayer-(player.position.x-camera.position.x)*Zoom, 
+			  DrawArrow(XdrawPlayer-(player.position.x-camera.position.x)*Zoom, 
 							  YdrawPlayer-(player.position.z-camera.position.z)*Zoom, 
 							  XdrawPlayer-(player.position.x-camera.position.target.x)*Zoom, 
-							  YdrawPlayer-(player.position.z-camera.position.target.z)*Zoom, 0xFF000000)
+							  YdrawPlayer-(player.position.z-camera.position.target.z)*Zoom, 0xFF666666)
 		 end
 		 
 		 if camera.focus.x ~= nil and camera.focus.z ~= nil
@@ -963,23 +1042,38 @@ function DrawCamera()
 			  then Canvas.DrawAxis(XdrawPlayer-(player.position.x-camera.focus.target.x)*Zoom, 
 								   YdrawPlayer-(player.position.z-camera.focus.target.z)*Zoom, 10, 0xFF00FFFF)
 								   
-				   Canvas.DrawLine(XdrawPlayer-(player.position.x-camera.focus.target.x)*Zoom, 
-								   YdrawPlayer-(player.position.z-camera.focus.target.z)*Zoom, 
-								   XdrawPlayer-(player.position.x-camera.focus.x)*Zoom, 
-								   YdrawPlayer-(player.position.z-camera.focus.z)*Zoom, 0xFF000000)			   
+				   DrawArrow(XdrawPlayer-(player.position.x-camera.focus.x)*Zoom,
+				             YdrawPlayer-(player.position.z-camera.focus.z)*Zoom,
+							 XdrawPlayer-(player.position.x-camera.focus.target.x)*Zoom, 
+							 YdrawPlayer-(player.position.z-camera.focus.target.z)*Zoom, 0xFF666666)			   
 			  end
 			  Canvas.DrawAxis(XdrawPlayer-(player.position.x-camera.focus.x)*Zoom, 
 							  YdrawPlayer-(player.position.z-camera.focus.z)*Zoom, 10, 0xFF0000FF)
 			  
 			  
-			  Canvas.DrawLine(XdrawPlayer-(player.position.x-camera.position.x)*Zoom, 
+			  DrawArrow(XdrawPlayer-(player.position.x-camera.position.x)*Zoom, 
 							  YdrawPlayer-(player.position.z-camera.position.z)*Zoom, 
 							  XdrawPlayer-(player.position.x-camera.focus.x)*Zoom, 
-							  YdrawPlayer-(player.position.z-camera.focus.z)*Zoom, 0xFF000000)
+							  YdrawPlayer-(player.position.z-camera.focus.z)*Zoom, 0xFF666666)
 		 end
 		 
-		 Canvas.DrawAxis(XdrawPlayer-(player.position.x-camera.position.x)*Zoom, 
-						 YdrawPlayer-(player.position.z-camera.position.z)*Zoom, 10, 0xFF00FF00)
+		 local dx = player.position.x-camera.position.x
+		 local dz = player.position.z-camera.position.z
+		 local ry = (camera.rotation.y+settings.angle.offset )* math.pi/(settings.angle.modulo/2)
+		 
+		 Canvas.DrawAxis(XdrawPlayer-(dx)*Zoom, 
+						 YdrawPlayer-(dz)*Zoom, 5, 0xFF008888)
+		
+		 if math.sqrt((dx*Zoom)^2+(dz*Zoom)^2) > 60 
+		 then Canvas.DrawPolygon({{XdrawPlayer-(dx)*Zoom, YdrawPlayer-(dz)*Zoom}, 
+							 {XdrawPlayer-(dx)*Zoom+math.cos(ry+math.pi/2.8)*30, YdrawPlayer-(dz)*Zoom-math.sin(ry+math.pi/2.8)*30},
+							 {XdrawPlayer-(dx)*Zoom+math.cos(ry-math.pi/2.8+math.pi)*30, YdrawPlayer-(dz)*Zoom-math.sin(ry-math.pi/2.8+math.pi)*30}},
+							 0xFF002222, 0x22008888) 
+
+			  Canvas.DrawLine(XdrawPlayer-(dx)*Zoom+math.cos(ry+math.pi/2.8)*28, YdrawPlayer-(dz)*Zoom-math.sin(ry+math.pi/2.8)*28,
+							  XdrawPlayer-(dx)*Zoom+math.cos(ry-math.pi/2.8+math.pi)*28, YdrawPlayer-(dz)*Zoom-math.sin(ry-math.pi/2.8+math.pi)*28,
+							  0xFF002222)
+		 end
 	else
 	end
 
@@ -998,7 +1092,9 @@ function DrawObject(x, y, radius)
 
 end
 
-function DrawCanvas()
+
+
+function UpdateCanvas()
 
 	Canvas.Clear(0xFFFFFFFF)
 	--XPosition = memory.readfloat(XPosAddr, true);
@@ -1018,25 +1114,24 @@ function DrawCanvas()
 	--Player coordinate lines
 	Canvas.DrawLine(XdrawPlayer, 0, XdrawPlayer, 800, 0x55FF0000)
 	Canvas.DrawLine(0, YdrawPlayer, 800, YdrawPlayer, 0x55FF0000)
-	Canvas.DrawText(XdrawPlayer+1, 785, player.position.x)
-	Canvas.DrawText(0, YdrawPlayer+1, player.position.z)
+
 	
-	for k,v in pairs(objects) do
+	--for k,v in pairs(objects) do
 		--gui.drawText(100, 0+i*16, objects[i+1].active)
-		if objects[k].active ~= 0 or objects[k].active ~= nil
-		then local x = (XdrawPlayer-(player.position.x-objects[k].position.x))
-		     local z = (YdrawPlayer-(player.position.z-objects[k].position.z))
+		--if objects[k].active ~= 0 or objects[k].active ~= nil
+		--then local x = (XdrawPlayer-(player.position.x-objects[k].position.x))
+		 --    local z = (YdrawPlayer-(player.position.z-objects[k].position.z))
 			 --gui.drawText(100, 0+i*16, x..";"..z)
 			-- print(x.."	"..z)
 			--print(objects[i+1].position.x)
 			--DrawObject(x, z, objects[k].collision.radius)
-		end
+		--end
 		--print(objects[k].position)
-	end
+	--end
 	
-	DrawObject(XdrawPlayer-(player.position.x-object.position.x), 
-				YdrawPlayer-(player.position.z-object.position.z),
-				object.collision.radius)
+	--DrawObject(XdrawPlayer-(player.position.x-object.position.x), 
+				--YdrawPlayer-(player.position.z-object.position.z),
+				--object.collision.radius)
 	
 	
 	if player.collision.radius == nil
@@ -1200,6 +1295,9 @@ function DrawCanvas()
 		else Canvas.DrawRectangle(x, y, 17, 17, 0xFFBBBBBB, 0xFFDDDDDD)
 		end
 	end
+	
+	--Player Text
+
 	
 	
 	wasMouseButtL = mouseButt["Left"]
@@ -1428,7 +1526,7 @@ while true do
 	--MarkerControl()
 	
 	if not client.isturbo()
-	then DrawCanvas()
+	then UpdateCanvas()
 	end
 
 	if StartFlag and not PauseFlag-- and not done
