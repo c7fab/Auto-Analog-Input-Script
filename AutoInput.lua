@@ -14,7 +14,7 @@ function Start()
 			  RadiusMin = forms.gettext(RadiusMinTxt)
 			  RadiusMax = forms.gettext(RadiusMaxTxt)
               Optimisation = forms.gettext(OptDrop)
-			  TwoStep = forms.ischecked(TwoStepCheck)
+			  --TwoStep = forms.ischecked(TwoStepCheck)
 			  StartFlag = true
 			  forms.settext(StatLabel, "Started")
 			  UseCanv = true
@@ -240,14 +240,21 @@ end
 
 function ToggleFollow()
 
+	if follow == "none"
+	then follow = "player"
+		 xDrawOffset = 400
+		 yDrawOffset = 400
+	elseif follow == "player"
+		then follow = "none"
+		
+	end
 	
-
 end
 
 function ViewPlayer()
 
-	XdrawPlayer = 400
-	YdrawPlayer = 400
+	xDrawOffset = (xFollow-player.position.x)*Zoom +400
+	yDrawOffset = (yFollow-player.position.z)*Zoom +400
 
 end
 
@@ -260,7 +267,7 @@ end
 -- This function creates the main window.
 function WindowForm()
 
-	local OptTable = {"Line drawing"};--, , ,"Rotate around","None"
+	local OptTable = {"Low"}--, "Medium", "High"}
 	
 	Window = forms.newform(300, 500, "Auto analog input")
 	
@@ -285,7 +292,7 @@ function WindowForm()
 	
 	forms.label(Window, "Optimisation:", 5, 180, 70, 20)
 	OptDrop = forms.dropdown(Window, OptTable, 80, 175, 100, 20)
-	TwoStepCheck = forms.checkbox(Window, "Two stepping", 190, 175)
+	--TwoStepCheck = forms.checkbox(Window, "Two stepping", 190, 175)
 	
 	forms.label(Window, "Status:", 5, 210, 40, 15)
 	StatLabel = forms.label(Window, "Stopped", 45, 210, 200, 20)
@@ -297,9 +304,10 @@ function WindowForm()
 	forms.button(Window, "Stop", Stop, 205, 230)
 	
 	CanvasButton = forms.button(Window, "Edit Mode", ToggleCanvasEdit, 5, 270)
-	forms.button(Window, "Zoom +", ZoomIn, 100, 270, 50, 23)
-	forms.button(Window, "Zoom -", ZoomOut, 150, 270, 50, 23)
-	forms.button(Window, "Zoom 1", ResetZoom, 200, 270, 50, 23)
+	forms.button(Window, "Toggle Follow", ToggleFollow, 100, 270, 50, 23)
+	--forms.button(Window, "Zoom -", ZoomOut, 150, 270, 50, 23)
+	--forms.button(Window, "Zoom 1", ResetZoom, 200, 270, 50, 23)
+	
 	
 	autoUnpauseCheck = forms.checkbox(Window, "Auto Unpause:", 10, 300)
 	
@@ -493,8 +501,8 @@ Yinput = {}
 
 Canvas = gui.createcanvas(800,820)
 
-XdrawPlayer = 400
-YdrawPlayer = 400
+xDrawOffset = 400
+yDrawOffset = 400
 
 CPoints = {X, Z} --TODO
 PointsX = {}
@@ -511,6 +519,7 @@ dmy = 0
 currentWaypoint = 1
 UseCanv = false
 followPlayer = true
+follow = "none"
 
 statusStripItems = {toggleFollowItem = {x = 1, y = 801, toolTip = "Toggle Follow Player", clickFunction = ToggleFollow},
 					viewPlayerItem = {x = 21, y = 801, toolTip = "Reset View to Player", clickFunction = ViewPlayer}, 
@@ -544,6 +553,8 @@ f_old=0
 frameEdit = 0
 ug = 0
 autoUnpause = false
+
+firstStep = true
 
 
 tastudio.clearinputchanges()
@@ -792,6 +803,7 @@ end;
 
 function TwoStepping()
 	
+	
 
 end;
 
@@ -850,24 +862,69 @@ function CreateInput()
 	else client.pause()
 	end
 	
-	if HasGameRotatingCam == "true"
-	then InputAngle = ((FollowAngle - camera.rotation.y - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
-	else InputAngle = ((FollowAngle - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
-	end;
+	if Optimisation == "Low" 
+	then if HasGameRotatingCam == "true"
+		 then InputAngle = ((FollowAngle - camera.rotation.y - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
+		 else InputAngle = ((FollowAngle - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
+		 end
+		 Point = LineDrawing()
+		 if emu.framecount() >= ug
+		 then if emu.islagged()
+			  then tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", Point.X)
+				   tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", Point.Y)
+			  else tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", 0)
+				   tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", 0)
+			  end
+		 end
 	
-	if Optimisation == "None" then Point = NoOptimisation(RadiusMax);
-	elseif Optimisation == "Rotate around" then Point = RotateAround(math.floor(RadiusMax-RadiusMin/2+0.5));
-	elseif Optimisation == "Line drawing" then Point = LineDrawing()
+	elseif Optimisation == "Medium" --TODO: This should check angle error and adjust accordingly
+		then if firstStep == true 
+			 then if HasGameRotatingCam == "true"
+				  then InputAngle = ((FollowAngle - camera.rotation.y - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
+				  else InputAngle = ((FollowAngle - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
+				  end
+				  -- print("1st:"..InputAngle)
+				  Point = LineDrawing()
+		 
+				  if emu.framecount() >= ug
+				  then if emu.islagged()
+					   then tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", Point.X)
+							tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", Point.Y)
+							
+					   else tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", 0)
+							tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", 0)
+					   end
+				  end
+				  if f > f_old
+				  then firstStep = false
+				  end
+			 elseif firstStep == false
+				then local err = InputAngle - ((MovAngle % settings.angle.modulo)*math.pi/(settings.angle.modulo/2))
+				
+				  InputAngle = (InputAngle - err)
+				 -- print("2nd:"..InputAngle)
+			      Point = LineDrawing()
+							--print(f..";"..f_old..";"..ug..";"..lastug)
+							if f > f_old
+							then tastudio.submitanalogchange(lastug, "P1 X Axis", Point.X)
+								tastudio.submitanalogchange(lastug, "P1 Y Axis", Point.Y)
+							end
+					  --tastudio.submitanalogchange(emu.framecount()-1, "P1 X Axis", 0)
+							--tastudio.submitanalogchange(emu.framecount()-1, "P1 Y Axis", 0)
+					   firstStep = true
+				  if f == f_old 
+				then 
+				  
+				  --print("secondStep")
+				  end
+			 end
+	elseif Optimisation == "High" 
+		then 
 	end
 	
-	if tastudio.engaged() and emu.framecount() >= ug
-	then if emu.islagged()
-		 then tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", Point.X)
-			  tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", Point.Y)
-		 else tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", 0)
-			  tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", 0)
-		 end
-	end;
+	
+	
+	
 	
 	tastudio.applyinputchanges()
 
@@ -897,8 +954,8 @@ function AppendWayPoint(MX, MY)
 		 totalPoints = totalPoints + 1
 	end
 	
-	table.insert(PointsX, totalPoints+1, player.position.x+(MX-XdrawPlayer)/Zoom)
-	table.insert(PointsZ, totalPoints+1, player.position.z+(MY-YdrawPlayer)/Zoom)
+	table.insert(PointsX, totalPoints+1, xFollow+(MX-xDrawOffset)/Zoom)
+	table.insert(PointsZ, totalPoints+1, yFollow+(MY-yDrawOffset)/Zoom)
 	table.insert(PointsFrame, totalPoints+1, nil)
 			  
 	totalPoints = totalPoints + 1
@@ -934,7 +991,7 @@ function DeleteWayPoint(index)
 end
 
 function SplitPath(index)
-
+	--TODO: insert the new point to the yellow colored line segment (inserting at index crashes the script )
 	table.insert(PointsX, index+1, (PointsX[index]+(PointsX[index+1]-PointsX[index])/2))
 	table.insert(PointsZ, index+1, (PointsZ[index]+(PointsZ[index+1]-PointsZ[index])/2))
 	table.insert(PointsFrame, index+1, nil)
@@ -965,15 +1022,15 @@ function DrawPlayer(x, y, radius)
 	local fullInfoDraw = false
 
 	if player.position.previous.x ~= nil and player.position.previous.z ~= nil
-	then local dx = player.position.x-player.position.previous.x
-		 local dz = player.position.z-player.position.previous.z
+	then local dx = xFollow-player.position.previous.x
+		 local dz = yFollow-player.position.previous.z
 	
 		 Canvas.DrawEllipse(x-(dx+radius)*Zoom, y-(dz+radius)*Zoom,
 							2*radius*Zoom, 2*radius*Zoom, 0x55FF0000, 0x22FF0000)
 							
 		 Canvas.DrawAxis(x-dx*Zoom, y-dz*Zoom, 5, 0x55FF0000)			
 
-		 DrawArrow(x-dx*Zoom, y-dz*Zoom, x, y, 0x55FF0000)
+		 DrawArrow(x-dx*Zoom, y-dz*Zoom, x-(xFollow-player.position.x)*Zoom, y-(yFollow-player.position.z)*Zoom, 0x55FF0000)
 		 
 		 --TODO: Don't draw text below player hitbox
 		 if math.sqrt((x-dx*Zoom-mouseX)^2+(y-dz*Zoom-mouseY)^2) < 5 and math.sqrt(dx^2+dz^2)*Zoom >= 20
@@ -985,17 +1042,19 @@ function DrawPlayer(x, y, radius)
 		 end
 	end
 	
-	Canvas.DrawEllipse(x-radius*Zoom, y-radius*Zoom, 2*radius*Zoom, 2*radius*Zoom, 0xFFFF0000, 0x55FF0000)--Hitbox
-	DrawArrow(x, y, x+math.cos(player.rotation.y*math.pi/(settings.angle.modulo/2))*radius*Zoom, y-math.sin(player.rotation.y*math.pi/(settings.angle.modulo/2))*radius*Zoom, 0xFF880000)
+	Canvas.DrawEllipse(x-(xFollow-player.position.x+radius)*Zoom, y-(yFollow-player.position.z+radius)*Zoom, 2*radius*Zoom, 2*radius*Zoom, 0xFFFF0000, 0x55FF0000)--Hitbox
+	DrawArrow(x-(xFollow-player.position.x)*Zoom, y-(yFollow-player.position.z)*Zoom, 
+			  (x-(xFollow-player.position.x)*Zoom)+math.cos(player.rotation.y*math.pi/(settings.angle.modulo/2))*radius*Zoom,
+			  (y-(yFollow-player.position.z)*Zoom)-math.sin(player.rotation.y*math.pi/(settings.angle.modulo/2))*radius*Zoom, 0xFF880000)
 	
 	if player.velocity.x ~= nil and player.velocity.z ~= nil
-	then local dx = x+player.velocity.x*Zoom
-		 local dz = y+player.velocity.z*Zoom
+	then local dx = xFollow-(player.position.x+player.velocity.x)
+		 local dz = yFollow-(player.position.z+player.velocity.z)
 	
-		 DrawArrow(x, y, dx, dz, 0xFFFF0000)
+		 DrawArrow(x-(xFollow-player.position.x)*Zoom, y-(yFollow-player.position.z)*Zoom, x-dx*Zoom, y-dz*Zoom, 0xFFFF0000)
 						
-		 if math.sqrt((dx-mouseX)^2+(dz-mouseY)^2) < 5 and math.sqrt(player.velocity.x^2+player.velocity.z^2)*Zoom >= 20
-		 then Canvas.DrawText(dx+16, dz+16, 
+		 if math.sqrt((x-dx*Zoom-mouseX)^2+(y-dz*Zoom-mouseY)^2) < 5 and math.sqrt(player.velocity.x^2+player.velocity.z^2)*Zoom >= 20
+		 then Canvas.DrawText(x-dx*Zoom+16, y-dz*Zoom+16, 
 							  "Velocity:\nX:"..player.velocity.x.."\nY:"..player.velocity.y.."\nZ:"..player.velocity.z,
 							  0xFF000000, 0xEEDDDDDD)
 		 elseif math.sqrt(player.velocity.x^2+player.velocity.z^2)*Zoom < 20
@@ -1003,12 +1062,12 @@ function DrawPlayer(x, y, radius)
 		 end
 	end
 	
-	if math.sqrt((x-mouseX)^2+(y-mouseY)^2) < 5 and not fullInfoDraw
+	if math.sqrt((x-(xFollow-player.position.x)*Zoom-mouseX)^2+(y-(yFollow-player.position.z)*Zoom-mouseY)^2) < 5 and not fullInfoDraw
 	then Canvas.DrawText(x+16, y+16, 
 						 "Position:\nX:"..player.position.x.."\nY:"..player.position.y.."\nZ:"..player.position.z,
 							  0xFF000000, 0xEEDDDDDD)
-	elseif math.sqrt((x-mouseX)^2+(y-mouseY)^2) < 5 and fullInfoDraw
-		then Canvas.DrawText(x+16, y+16, 
+	elseif math.sqrt((x-(xFollow-player.position.x)*Zoom-mouseX)^2+(y-(yFollow-player.position.z)*Zoom-mouseY)^2) < 5 and fullInfoDraw
+		then Canvas.DrawText(x-(xFollow-player.position.x)*Zoom+16, y-(yFollow-player.position.z)*Zoom+16, 
 						 "Position:\n	X:"..tostring(player.position.x).."\n	Y:"..tostring(player.position.y).."\n	Z:"..tostring(player.position.z)..
 						 "\nPrevious Position:\n	X:"..tostring(player.position.previous.x).."\n	Y:"..tostring(player.position.previous.y).."\n	Z:"..tostring(player.position.previous.z)..
 						 "\nVelocity:\n	X:"..tostring(player.velocity.x).."\n	Y:"..tostring(player.velocity.y).."\n	Z:"..tostring(player.velocity.z).."\n	H:"..tostring(player.velocity.horizontal).."\n	V:"..tostring(player.velocity.vertical),
@@ -1017,8 +1076,8 @@ function DrawPlayer(x, y, radius)
 	
 	
 	
-	Canvas.DrawText(XdrawPlayer+1, 785, player.position.x)
-	Canvas.DrawText(0, YdrawPlayer+1, player.position.z)
+	Canvas.DrawText(xDrawOffset+1, 785, player.position.x)
+	Canvas.DrawText(0, yDrawOffset+1, player.position.z)
 	
 	
 	
@@ -1028,50 +1087,50 @@ function DrawCamera()
 
 	if camera.position.x ~= nil and camera.position.z ~= nil
 	then if camera.position.target.x ~= nil and camera.position.target.z ~= nil
-		 then Canvas.DrawAxis(XdrawPlayer-(player.position.x-camera.position.target.x)*Zoom, 
-							  YdrawPlayer-(player.position.z-camera.position.target.z)*Zoom, 10, 0xFFFF0000)
+		 then Canvas.DrawAxis(xDrawOffset-(xFollow-camera.position.target.x)*Zoom, 
+							  yDrawOffset-(yFollow-camera.position.target.z)*Zoom, 10, 0xFFFF0000)
 							  
-			  DrawArrow(XdrawPlayer-(player.position.x-camera.position.x)*Zoom, 
-							  YdrawPlayer-(player.position.z-camera.position.z)*Zoom, 
-							  XdrawPlayer-(player.position.x-camera.position.target.x)*Zoom, 
-							  YdrawPlayer-(player.position.z-camera.position.target.z)*Zoom, 0xFF666666)
+			  DrawArrow(xDrawOffset-(xFollow-camera.position.x)*Zoom, 
+							  yDrawOffset-(yFollow-camera.position.z)*Zoom, 
+							  xDrawOffset-(xFollow-camera.position.target.x)*Zoom, 
+							  yDrawOffset-(yFollow-camera.position.target.z)*Zoom, 0xFF666666)
 		 end
 		 
 		 if camera.focus.x ~= nil and camera.focus.z ~= nil
 		 then if camera.focus.target.x ~= nil and camera.focus.target.z ~= nil
-			  then Canvas.DrawAxis(XdrawPlayer-(player.position.x-camera.focus.target.x)*Zoom, 
-								   YdrawPlayer-(player.position.z-camera.focus.target.z)*Zoom, 10, 0xFF00FFFF)
+			  then Canvas.DrawAxis(xDrawOffset-(xFollow-camera.focus.target.x)*Zoom, 
+								   yDrawOffset-(yFollow-camera.focus.target.z)*Zoom, 10, 0xFF00FFFF)
 								   
-				   DrawArrow(XdrawPlayer-(player.position.x-camera.focus.x)*Zoom,
-				             YdrawPlayer-(player.position.z-camera.focus.z)*Zoom,
-							 XdrawPlayer-(player.position.x-camera.focus.target.x)*Zoom, 
-							 YdrawPlayer-(player.position.z-camera.focus.target.z)*Zoom, 0xFF666666)			   
+				   DrawArrow(xDrawOffset-(xFollow-camera.focus.x)*Zoom,
+				             yDrawOffset-(yFollow-camera.focus.z)*Zoom,
+							 xDrawOffset-(xFollow-camera.focus.target.x)*Zoom, 
+							 yDrawOffset-(yFollow-camera.focus.target.z)*Zoom, 0xFF666666)			   
 			  end
-			  Canvas.DrawAxis(XdrawPlayer-(player.position.x-camera.focus.x)*Zoom, 
-							  YdrawPlayer-(player.position.z-camera.focus.z)*Zoom, 10, 0xFF0000FF)
+			  Canvas.DrawAxis(xDrawOffset-(xFollow-camera.focus.x)*Zoom, 
+							  yDrawOffset-(yFollow-camera.focus.z)*Zoom, 10, 0xFF0000FF)
 			  
 			  
-			  DrawArrow(XdrawPlayer-(player.position.x-camera.position.x)*Zoom, 
-							  YdrawPlayer-(player.position.z-camera.position.z)*Zoom, 
-							  XdrawPlayer-(player.position.x-camera.focus.x)*Zoom, 
-							  YdrawPlayer-(player.position.z-camera.focus.z)*Zoom, 0xFF666666)
+			  DrawArrow(xDrawOffset-(xFollow-camera.position.x)*Zoom, 
+							  yDrawOffset-(yFollow-camera.position.z)*Zoom, 
+							  xDrawOffset-(xFollow-camera.focus.x)*Zoom, 
+							  yDrawOffset-(yFollow-camera.focus.z)*Zoom, 0xFF666666)
 		 end
 		 
-		 local dx = player.position.x-camera.position.x
-		 local dz = player.position.z-camera.position.z
+		 local dx = xFollow-camera.position.x
+		 local dz = yFollow-camera.position.z
 		 local ry = (camera.rotation.y+settings.angle.offset )* math.pi/(settings.angle.modulo/2)
 		 
-		 Canvas.DrawAxis(XdrawPlayer-(dx)*Zoom, 
-						 YdrawPlayer-(dz)*Zoom, 5, 0xFF008888)
+		 Canvas.DrawAxis(xDrawOffset-(dx)*Zoom, 
+						 yDrawOffset-(dz)*Zoom, 5, 0xFF008888)
 		
 		 if math.sqrt((dx*Zoom)^2+(dz*Zoom)^2) > 60 
-		 then Canvas.DrawPolygon({{XdrawPlayer-(dx)*Zoom, YdrawPlayer-(dz)*Zoom}, 
-							 {XdrawPlayer-(dx)*Zoom+math.cos(ry+math.pi/2.8)*30, YdrawPlayer-(dz)*Zoom-math.sin(ry+math.pi/2.8)*30},
-							 {XdrawPlayer-(dx)*Zoom+math.cos(ry-math.pi/2.8+math.pi)*30, YdrawPlayer-(dz)*Zoom-math.sin(ry-math.pi/2.8+math.pi)*30}},
+		 then Canvas.DrawPolygon({{xDrawOffset-(dx)*Zoom, yDrawOffset-(dz)*Zoom}, 
+							 {xDrawOffset-(dx)*Zoom+math.cos(ry+math.pi/2.8)*30, yDrawOffset-(dz)*Zoom-math.sin(ry+math.pi/2.8)*30},
+							 {xDrawOffset-(dx)*Zoom+math.cos(ry-math.pi/2.8+math.pi)*30, yDrawOffset-(dz)*Zoom-math.sin(ry-math.pi/2.8+math.pi)*30}},
 							 0xFF002222, 0x22008888) 
 
-			  Canvas.DrawLine(XdrawPlayer-(dx)*Zoom+math.cos(ry+math.pi/2.8)*28, YdrawPlayer-(dz)*Zoom-math.sin(ry+math.pi/2.8)*28,
-							  XdrawPlayer-(dx)*Zoom+math.cos(ry-math.pi/2.8+math.pi)*28, YdrawPlayer-(dz)*Zoom-math.sin(ry-math.pi/2.8+math.pi)*28,
+			  Canvas.DrawLine(xDrawOffset-(dx)*Zoom+math.cos(ry+math.pi/2.8)*28, yDrawOffset-(dz)*Zoom-math.sin(ry+math.pi/2.8)*28,
+							  xDrawOffset-(dx)*Zoom+math.cos(ry-math.pi/2.8+math.pi)*28, yDrawOffset-(dz)*Zoom-math.sin(ry-math.pi/2.8+math.pi)*28,
 							  0xFF002222)
 		 end
 	else
@@ -1082,13 +1141,18 @@ end
 function DrawObject(x, y, radius)	
 
 	--Canvas.DrawEllipse(x-10*Zoom, y-10*Zoom, 2*10*Zoom, 2*10*Zoom, 0xFF00FF00, 0x5500FF00)
-	Canvas.DrawEllipse(XdrawPlayer-(player.position.x-object.position.x)*Zoom-radius*Zoom, 
-	YdrawPlayer-(player.position.z-object.position.z)*Zoom-radius*Zoom,
-	2*object.collision.radius*Zoom, 2*object.collision.radius*Zoom, 0xFF00FF00, 0x5500FF00)
+	Canvas.DrawEllipse(xDrawOffset-(player.position.x-x+radius)*Zoom, 
+						yDrawOffset-(player.position.z-y+radius)*Zoom,
+						2*radius*Zoom, 2*radius*Zoom, 0xFF00FF00, 0x5500FF00)
 	
+
 	
-			 Canvas.DrawAxis(XdrawPlayer-(player.position.x-object.position.x)*Zoom, 
-						 YdrawPlayer-(player.position.z-object.position.z)*Zoom, 10, 0xFF000000)
+			 Canvas.DrawAxis(xDrawOffset-(player.position.x-x)*Zoom, 
+						 yDrawOffset-(player.position.z-y)*Zoom, 10, 0xFF000000)
+						 
+	--Canvas.DrawText(xDrawOffset-(player.position.x-x)*Zoom, yDrawOffset-(player.position.z-y)*Zoom, "obj")
+	 
+	
 
 end
 
@@ -1103,57 +1167,68 @@ function UpdateCanvas()
 	--selected = false
 	--TODO:resizable canvas
 	--TODO:Zooming
-	--XdrawPlayer = XdrawPlayer
-	--YdrawPlayer = YdrawPlayer
+	--xDrawOffset = xDrawOffset
+	--yDrawOffset = yDrawOffset
+	
+	if follow == "none"
+	then xFollow = 0
+		 yFollow = 0
+	elseif follow == "player"
+		then xFollow = player.position.x
+			 yFollow = player.position.z
+	end
 	
 	--Origin lines
-	Canvas.DrawLine((XdrawPlayer-player.position.x*Zoom), 0, (XdrawPlayer-player.position.x*Zoom), 800, 0x55000000)
-	Canvas.DrawLine(0, (YdrawPlayer-player.position.z*Zoom), 800, (YdrawPlayer-player.position.z*Zoom), 0x55000000)
-	Canvas.DrawText((XdrawPlayer-player.position.x*Zoom), (YdrawPlayer-player.position.z*Zoom), "(0;0)")
+	Canvas.DrawLine((xDrawOffset-xFollow*Zoom), 0, (xDrawOffset-xFollow*Zoom), 800, 0x55000000)
+	Canvas.DrawLine(0, (yDrawOffset-yFollow*Zoom), 800, (yDrawOffset-yFollow*Zoom), 0x55000000)
+	Canvas.DrawText((xDrawOffset-xFollow*Zoom), (yDrawOffset-yFollow*Zoom), "(0;0)")
 	
 	--Player coordinate lines
-	Canvas.DrawLine(XdrawPlayer, 0, XdrawPlayer, 800, 0x55FF0000)
-	Canvas.DrawLine(0, YdrawPlayer, 800, YdrawPlayer, 0x55FF0000)
+	Canvas.DrawLine(xDrawOffset-(xFollow-player.position.x)*Zoom, 0, xDrawOffset-(xFollow-player.position.x)*Zoom, 800, 0x55FF0000)
+	Canvas.DrawLine(0, yDrawOffset-(yFollow-player.position.z)*Zoom, 800, yDrawOffset-(yFollow-player.position.z)*Zoom, 0x55FF0000)
 
+			mouseX = Canvas.GetMouseX()
+	mouseY = Canvas.GetMouseY()
 	
-	--for k,v in pairs(objects) do
+	mouseButt = input.getmouse()
+	
+	
+--	for k in pairs(objects) do
 		--gui.drawText(100, 0+i*16, objects[i+1].active)
-		--if objects[k].active ~= 0 or objects[k].active ~= nil
-		--then local x = (XdrawPlayer-(player.position.x-objects[k].position.x))
-		 --    local z = (YdrawPlayer-(player.position.z-objects[k].position.z))
-			 --gui.drawText(100, 0+i*16, x..";"..z)
-			-- print(x.."	"..z)
-			--print(objects[i+1].position.x)
-			--DrawObject(x, z, objects[k].collision.radius)
-		--end
+	--	if objects[k].active ~= 0 and objects[k].active ~= nil
+	--	then --local x = (xDrawOffset-(player.position.x-objects[k].position.x)*Zoom)
+		    --local z = (yDrawOffset-(player.position.z-objects[k].position.z)*Zoom)
+			-- gui.drawText(100, 0+i*16, x..";"..z)
+		--	print(x.."	"..z)
+			---print(objects[k].active)
+		--	DrawObject(objects[k].position.x, objects[k].position.z, objects[k].collision.radius)
+	--	end
 		--print(objects[k].position)
 	--end
 	
-	--DrawObject(XdrawPlayer-(player.position.x-object.position.x), 
-				--YdrawPlayer-(player.position.z-object.position.z),
+	--DrawObject(xDrawOffset-(player.position.x-object.position.x), 
+				--yDrawOffset-(player.position.z-object.position.z),
 				--object.collision.radius)
 	
+
 	
 	if player.collision.radius == nil
-	then DrawPlayer(XdrawPlayer, YdrawPlayer, 10)
-	else DrawPlayer(XdrawPlayer, YdrawPlayer, player.collision.radius)
+	then DrawPlayer(xDrawOffset, yDrawOffset, 10)
+	else DrawPlayer(xDrawOffset, yDrawOffset, player.collision.radius)
 	end	
 	
 	
 	DrawCamera()
 	
-	--Canvas.DrawText(0, 64, tostring(XdrawPlayer))
+	--Canvas.DrawText(0, 64, tostring(xDrawOffset))
 	
-	mouseX = Canvas.GetMouseX()
-	mouseY = Canvas.GetMouseY()
-	
-	mouseButt = input.getmouse()
+
 	
 	--keyb = input.get() FUCK doesn't work on Canvas
 	--print(tostring(keyb["K"]))
 		 -- if keyb["K"] == true
-		 -- then XdrawPlayer = 400
-			  -- YdrawPlayer = 400
+		 -- then xDrawOffset = 400
+			  -- yDrawOffset = 400
 		 -- end
 	if mouseX >= 0 and mouseX <= 800 and mouseY >= 0 and mouseY <= 800
 	then if mouseButt["Left"] and not wasMouseButtL and not selected and CanvasMode == "edit" -- adding a new waypoint
@@ -1163,8 +1238,8 @@ function UpdateCanvas()
 		 then dmx = mouseX - oldMouseX
 			  dmy = mouseY - oldMouseY
 			  
-			  XdrawPlayer = XdrawPlayer + dmx--/Zoom
-			  YdrawPlayer = YdrawPlayer + dmy--/Zoom
+			  xDrawOffset = xDrawOffset + dmx--/Zoom
+			  yDrawOffset = yDrawOffset + dmy--/Zoom
 			  
 		 end
  
@@ -1178,7 +1253,7 @@ function UpdateCanvas()
 		 end
 		 		 
 		 --print(tostring(mouseButt[Wheel]))
-		 Canvas.DrawText(0,0, " "..player.position.x+(mouseX-XdrawPlayer)/Zoom.."\n"..player.position.z+(mouseY-YdrawPlayer)/Zoom.."\n"..Zoom)
+		 Canvas.DrawText(0,0, " "..xFollow+(mouseX-xDrawOffset)/Zoom.."\n"..yFollow+(mouseY-yDrawOffset)/Zoom.."\n"..Zoom)
 		
 	else 
 	end
@@ -1191,8 +1266,8 @@ function UpdateCanvas()
 		--print("y "..tostring(PointsZ[k]))
 		--print(k)
 		if PointsX[k] ~= nil and PointsZ[k] ~= nil
-		then local x = (XdrawPlayer-(player.position.x-PointsX[k])*Zoom)
-			 local z = (YdrawPlayer-(player.position.z-PointsZ[k])*Zoom)
+		then local x = (xDrawOffset-(xFollow-PointsX[k])*Zoom)
+			 local z = (yDrawOffset-(yFollow-PointsZ[k])*Zoom)
 			 
 			 
 			 
@@ -1204,7 +1279,7 @@ function UpdateCanvas()
 			-- Canvas.DrawText(0, 16+16*k, ""..tostring(PointsX[k]).." , "..tostring(PointsZ[k]))
 			
 			if k > 1
-			then Canvas.DrawLine((XdrawPlayer-(player.position.x-PointsX[k-1])*Zoom), (YdrawPlayer-(player.position.z-PointsZ[k-1])*Zoom), x, z)
+			then Canvas.DrawLine((xDrawOffset-(xFollow-PointsX[k-1])*Zoom), (yDrawOffset-(yFollow-PointsZ[k-1])*Zoom), x, z)
 			end
 			
 			if math.sqrt((x-mouseX)^2+(z-mouseY)^2) < 5
@@ -1214,7 +1289,7 @@ function UpdateCanvas()
 				 Canvas.DrawEllipse(x-5, z-5, 10, 10, 0xFF000000, 0xFFFFFF00)
 				 
 				 if k > 1
-				 then Canvas.DrawLine((XdrawPlayer-(player.position.x-PointsX[k-1])*Zoom), (YdrawPlayer-(player.position.z-PointsZ[k-1])*Zoom), x, z, 0xFFFFFF00)
+				 then Canvas.DrawLine((xDrawOffset-(xFollow-PointsX[k-1])*Zoom), (yDrawOffset-(yFollow-PointsZ[k-1])*Zoom), x, z, 0xFFFFFF00)
 				 end
 				 
 				 if CanvasMode == "edit"
@@ -1512,7 +1587,7 @@ then local file = io.open(movie.filename().."c.ptl", "r")
 
 while true do
 
-	local f = emu.framecount()
+	f = emu.framecount()
 	
 	if f > ug
 	then ug = f
@@ -1521,7 +1596,7 @@ while true do
 	
 	--if f_old ~= f then done = false; end;
 	
-	--f_old = f;
+	
 	
 	--MarkerControl()
 	
@@ -1532,7 +1607,7 @@ while true do
 	if StartFlag and not PauseFlag-- and not done
 	then CreateInput()
 	end
-
+f_old = f;
 	done = true
 	
 	inget = input.get()
