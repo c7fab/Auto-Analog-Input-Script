@@ -1350,6 +1350,14 @@ function UpdateCanvas()
 									ug = PointsFrame[1]
 						   end
 					  end
+				 elseif CanvasMode == "view"
+					 then if mouseButt["Left"]
+						  then if PointsFrame[k] ~= nil
+							   then tastudio.setplayback(PointsFrame[k])
+								    currentWaypoint = k
+							   end
+						  end
+					  
 				 end
 			else --selected = false
 				Pselection[k] = false
