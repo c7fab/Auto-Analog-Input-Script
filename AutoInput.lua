@@ -18,7 +18,7 @@ function Start()
 			  StartFlag = true
 			  forms.settext(StatLabel, "Started")
 			  UseCanv = true
-			  currentWaypoint = 1
+			 -- currentWaypoint = 1
 		 end;
 	end;
 	
@@ -1224,7 +1224,7 @@ function UpdateCanvas()
 	
 	DrawCamera()
 	
-	Canvas.DrawText(0, 64, tostring(xDrawOffset)..";"..tostring(yDrawOffset))
+	Canvas.DrawText(0, 64, tostring(xDrawOffset)..";"..tostring(yDrawOffset).."\n"..tostring(currentWaypoint))
 	
 
 	
@@ -1510,7 +1510,7 @@ function BranchSaved(index)
 	
 	local file = io.open(movie.filename()..tostring(index)..".ptl", "w+")
 	
-	--file:write(tostring(PointsFrame[1].."\n"))
+	file:write(tostring(currentWaypoint.."\n"))
 	
 	for k,v in pairs(PointsX) do
 		file:write(tostring(PointsX[k])..";"..tostring(PointsZ[k])..";"..tostring(PointsFrame[k]).."\n")
@@ -1525,7 +1525,7 @@ function BranchLoaded(index)
 	if index ~= -1
 	then local backup = io.open(movie.filename().."-1.ptl", "w+")
 		 
-		-- backup:write(tostring(PointsFrame[1].."\n"))
+		 backup:write(tostring(currentWaypoint.."\n"))
 	
 		 for k,v in pairs(PointsX) do
 			backup:write(tostring(PointsX[k])..";"..tostring(PointsZ[k])..";"..tostring(PointsFrame[k]).."\n")
@@ -1544,7 +1544,7 @@ function BranchLoaded(index)
 	local file = io.open(movie.filename()..tostring(index)..".ptl", "r")
 	
 	if file ~= nil
-	then --PointsFrame[1] = tonumber(file:read("*line"))
+	then currentWaypoint = tonumber(file:read("*line"))
 	
 		 for i in file:lines(1) do
 
@@ -1558,7 +1558,10 @@ function BranchLoaded(index)
 			totalPoints = totalPoints + 1
 		 end
 		 file:close()
-		 tastudio.setplayback(PointsFrame[1])
+		 if PointsFrame[currentWaypoint] == nil
+		 then currentWaypoint = 1
+		 end
+		 tastudio.setplayback(PointsFrame[currentWaypoint])
 	end
 
 end
@@ -1589,7 +1592,7 @@ function Exit()
 	
 	local file = io.open(movie.filename().."c.ptl", "w+")
 	
-	--file:write(tostring(PointsFrame[1].."\n"))
+	file:write(tostring(currentWaypoint.."\n"))
 	
 	for k,v in pairs(PointsX) do
 		file:write(tostring(PointsX[k])..";"..tostring(PointsZ[k])..";"..tostring(PointsFrame[k]).."\n")
@@ -1611,7 +1614,7 @@ event.onexit(Exit)
 if tastudio.engaged()
 then local file = io.open(movie.filename().."c.ptl", "r")
 	 if file ~= nil
-	 then --PointsFrame[1] = tonumber(file:read("*line"))
+	 then currentWaypoint = tonumber(file:read("*line"))
 	
 		  for i in file:lines(1) do
 
@@ -1625,7 +1628,10 @@ then local file = io.open(movie.filename().."c.ptl", "r")
 			totalPoints = totalPoints + 1
 		  end
 		 file:close()
-		 tastudio.setplayback(PointsFrame[1])
+		 if PointsFrame[currentWaypoint] == nil
+		 then currentWaypoint = 1
+		 end
+		 tastudio.setplayback(PointsFrame[currentWaypoint])
 	 end
 	
 
