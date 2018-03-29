@@ -61,12 +61,29 @@ function IncrementAngle(inpX, inpY)
 	local Xbest = inpX
 	local Ybest = inpY
 	local inp_a = math.atan2(inpY, inpX) % math.pi
-	local inp_ad = (inp_a *180/math.pi) % 360
+	local inp_ad = (math.atan2(inpY, inpX) *180/math.pi) % 360
+	--print(inp_ad)
+	
+	--if true-- not (inp_ad == 0 or inp_ad < 26.745225 and inp_ad > 26.565051 or inp_ad == 45 or inp_ad < 90 and inp_ad > 89.548861
+	--		or inp_ad == 90 or inp_ad < 116.745225 and inp_ad > 116.565051 or inp_ad == 135 or inp_ad < 180 and inp_ad > 179.552385
+	--		or inp_ad == 180 or inp_ad < 206.745225 and inp_ad > 206.565051 or inp_ad == 225 or inp_ad == 270
+	--		or inp_ad < 296.745225 and inp_ad > 296.565051)
 
-	if not(inp_ad == 0 or inp_ad == 45 or inp_ad == 90 or inp_ad == 135 or inp_ad == 180 or inp_ad == 225 or inp_ad == 270 or inp_ad == 315)-- or math.abs(inp["X Axis"])/math.abs(inp["Y Axis"]) == 2 or math.abs(inp["Y Axis"])/math.abs(inp["X Axis"]) == 2)
-	then local Points = Bresenham(0,0, inpX*182, inpY*182, "add", inpX, inpY)
+	if inp_ad == 0 then Xbest = 127; Ybest = 1;
+	elseif inp_ad < 26.745225 and inp_ad > 26.565051 then Xbest = 127; Ybest = 64; 
+	elseif inp_ad == 45 then Xbest = 126; Ybest = 127;
+	elseif inp_ad == 90 then Xbest = -1; Ybest = 127;
+	elseif inp_ad < 116.745225 and inp_ad > 116.565051 then Xbest = -64; Ybest = 127;
+	elseif inp_ad == 135 then Xbest = -128; Ybest = 127;
+	elseif inp_ad == 180 then Xbest = -128; Ybest = -1;
+	elseif inp_ad < 206.745225 and inp_ad > 206.565051 then Xbest = -127; Ybest = -64;
+	elseif inp_ad == 225 then Xbest = -127; Ybest = -128
+	elseif inp_ad == 270 then Xbest = 1; Ybest = -128
+	elseif inp_ad < 296.745225 and inp_ad > 296.565051 then Xbest = 64; Ybest = -127
+	elseif inp_ad == 315 then Xbest = 127; Ybest = -126	
+	else local Points = Bresenham(0,0, inpX*182, inpY*182, "add", inpX, inpY)
 		 local bestDist = 9999999999;
-
+			
 		 for i, pt in pairs(Points) do
 			local pt_a = math.atan2(pt.Y, pt.X) % math.pi
 			local newDist = math.abs(pt_a - inp_a);
@@ -79,19 +96,6 @@ function IncrementAngle(inpX, inpY)
 		 		end
 		 	end
 		 end --TODO: Check user settings
-	elseif inp_ad == 0 then Xbest = 127; Ybest = 1
-	--elseif inp_ad < 26.745226 and inp_ad > 26.384308 then Xbest = 127; Ybest = 64
-	elseif inp_ad == 45 then Xbest = 126; Ybest = 127
-	--elseif inp_ad < 63.615692 and inp_ad > 63.254774 then Xbest = 64; Ybest = 127
-	elseif inp_ad == 90 then Xbest = -1; Ybest = 127
-	--elseif inp_ad < 116.745226 and inp_ad > 116.384308 then Xbest = -64; Ybest = 127
-	elseif inp_ad == 135 then Xbest = -128; Ybest = 127
-	--elseif inp_ad < 153.615692 and inp_ad > 254774 then Xbest = -127; Ybest = 63
-	elseif inp_ad == 180 then Xbest = -128; Ybest = -1
-	
-	elseif inp_ad == 225 then Xbest = -127; Ybest = -128
-	elseif inp_ad == 270 then Xbest = 1; Ybest = -128
-	elseif inp_ad == 315 then Xbest = 127; Ybest = -126	
 	end
 	
 	return Xbest, Ybest
@@ -109,6 +113,7 @@ function Add()
 			
 			tastudio.submitanalogchange(sel[i], "P1 X Axis", X)
 			tastudio.submitanalogchange(sel[i], "P1 Y Axis", Y)
+			--print(tostring(X).."|"..tostring(Y)..":"..tostring((math.atan2(Y,X)*180/math.pi)%360))
 		end
 	end
 	
@@ -129,10 +134,24 @@ function DecrementAngle(inpX, inpY)
 	local Xbest = inpX
 	local Ybest = inpY
 	local inp_a = math.atan2(inpY, inpX) % math.pi
-	local inp_ad = (inp_a *180/math.pi) % 360
+	local inp_ad = (math.atan2(inpY, inpX) *180/math.pi) % 360
 
-	if not(inp_ad == 0 or inp_ad == 45 or inp_ad == 90 or inp_ad == 135 or inp_ad == 180 or inp_ad == 225 or inp_ad == 270 or inp_ad == 315)
-	then local Points = Bresenham(0,0, inpX*182, inpY*182, "sub", inpX, inpY)
+	--if not(inp_ad == 0 or inp_ad == 45 or inp_ad == 90 or inp_ad == 135 or inp_ad == 180 or inp_ad == 225 or inp_ad == 270 or inp_ad == 315)
+	
+	if inp_ad == 0 then Xbest = 127; Ybest = -1
+	elseif inp_ad == 45 then Xbest = 127; Ybest = 126
+	elseif inp_ad <63.434988 and inp_ad > 63.254775 then Xbest = 64; Ybest = 127
+	elseif inp_ad == 90 then Xbest = 1; Ybest = 127
+	elseif inp_ad == 135 then Xbest = -126; Ybest = 127
+	elseif inp_ad < 153.434988 and inp_ad > 153.254775 then Xbest = -127; Ybest = 64
+	elseif inp_ad == 180 then Xbest = -128; Ybest = 1
+	elseif inp_ad < 180.447615 and inp_ad > 180 then Xbest = -128; Ybest = 0
+	elseif inp_ad == 225 then Xbest = -128; Ybest = -127
+	elseif inp_ad < 243.434988 and inp_ad > 243.254775 then Xbest = -64; Ybest = -127
+	elseif inp_ad == 270 then Xbest = -1; Ybest = -128
+	elseif inp_ad < 333.434988 and inp_ad > 333.254775 then Xbest = 127; Ybest = -64
+	elseif inp_ad == 315 then Xbest = 127; Ybest = -128
+	else local Points = Bresenham(0,0, inpX*182, inpY*182, "sub", inpX, inpY)
 		 local bestDist = 9999999999
 		 
 		 for i, pt in pairs(Points) do
@@ -147,14 +166,7 @@ function DecrementAngle(inpX, inpY)
 				 end
 			 end
 		 end
-	elseif inp_ad == 0 then Xbest = 127; Ybest = -1
-	elseif inp_ad == 45 then Xbest = 127; Ybest = 126
-	elseif inp_ad == 90 then Xbest = 1; Ybest = 127
-	elseif inp_ad == 135 then Xbest = -126; Ybest = 127
-	elseif inp_ad == 180 then Xbest = -128; Ybest = 1
-	elseif inp_ad == 225 then Xbest = -128; Ybest = -127
-	elseif inp_ad == 270 then Xbest = -1; Ybest = -128
-	elseif inp_ad == 315 then Xbest = 127; Ybest = -128
+	
 	end
 	
 	return Xbest, Ybest
@@ -171,6 +183,7 @@ function Sub()
 			local X, Y = DecrementAngle(inp["P1 X Axis"], inp["P1 Y Axis"])
 			tastudio.submitanalogchange(sel[i], "P1 X Axis", X)
 			tastudio.submitanalogchange(sel[i], "P1 Y Axis", Y)
+			--print(tostring(X).."|"..tostring(Y)..":"..tostring((math.atan2(Y,X)*180/math.pi)%360))
 		 end
 	end
 	
