@@ -265,6 +265,18 @@ function ToggleFollow()
 	
 end
 
+function ToggleMapDisplay()
+
+	if drawMap == "yes"
+	then drawMap = "no"
+	elseif drawMap == "no"
+		then drawMap = "auto"
+		elseif drawMap == "auto"
+			then drawMap = "yes"
+	end
+
+end
+
 function ViewPlayer()
 
 	xDrawOffset = (xFollow-player.position.x)*Zoom +400
@@ -272,7 +284,19 @@ function ViewPlayer()
 
 end
 
-function ViewWaypoint()
+function ViewPreviousWaypoint()
+
+	
+
+end
+
+function ViewCurrentWaypoint()
+
+	
+
+end
+
+function ViewNextWaypoint()
 
 	
 
@@ -591,13 +615,17 @@ currentWaypoint = 1
 UseCanv = false
 followPlayer = true
 follow = "none"
+drawMap = "yes"
 
-statusStripItems = {toggleFollowItem = {x = 1, y = 801, toolTip = "Toggle Follow Player", clickFunction = ToggleFollow, singleclick = true},
-					viewPlayerItem = {x = 21, y = 801, toolTip = "Reset View to Player", clickFunction = ViewPlayer, singleclick = true}, 
-					viewWaypointItem = {x = 41, y = 801, toolTip = "Set View next Waypoint", clickFunction = ViewWaypoint, singleclick = true}, 
-					ZoomInItem = {x = 61, y = 801, toolTip = "Zoom In", clickFunction = ZoomIn, singleclick = false}, 
-					ZoomOutItem = {x = 81, y = 801, toolTip = "Zoom Out", clickFunction = ZoomOut, singleclick = false}, 
-					ResetZoomItem = {x = 101, y = 801, toolTip = "Reset Zoom", clickFunction = ResetZoom, singleclick = true} 
+statusStripItems = {toggleFollowItem = {x = 1, toolTip = "Toggle Follow Player", clickFunction = ToggleFollow, singleclick = true},
+					viewPlayerItem = {x = 21, toolTip = "Reset View to Player", clickFunction = ViewPlayer, singleclick = true}, 
+					viewPreviousWaypointItem = {x = 41, toolTip = "Set View previous Waypoint", clickFunction = ViewPreviousWaypoint, singleclick = true}, 
+					viewCurrentWaypointItem = {x = 61, toolTip = "Set View current Waypoint", clickFunction = ViewCurrentWaypoint, singleclick = true}, 
+					viewNextWaypointItem = {x = 81, toolTip = "Set View next Waypoint", clickFunction = ViewNextWaypoint, singleclick = true}, 
+					zoomInItem = {x = 101, toolTip = "Zoom In", clickFunction = ZoomIn, singleclick = false}, 
+					zoomOutItem = {x = 121, toolTip = "Zoom Out", clickFunction = ZoomOut, singleclick = false}, 
+					resetZoomItem = {x = 141, toolTip = "Reset Zoom", clickFunction = ResetZoom, singleclick = true},
+					toggleMapDisplayItem = {x = 161, toolTip = "Toggle Map Display", clickFunction = ToggleMapDisplay, singleclick = true}
 				   }
 
 rightClickItems = {editMode = {mouseOverPoint = {setPosition = {y = 0, text = "Set new position", clickFunction = nil}, 
@@ -1172,8 +1200,8 @@ function DrawPlayer(x, y, radius)
 	
 	
 	
-	Canvas.DrawText(xDrawOffset+1, 785, player.position.x)
-	Canvas.DrawText(0, yDrawOffset+1, player.position.z)
+	Canvas.DrawText(xDrawOffset-(xFollow-player.position.x)*Zoom+1, 785, player.position.x)
+	Canvas.DrawText(0, yDrawOffset-(yFollow-player.position.z)*Zoom+1, player.position.z)
 	
 	
 	
@@ -1270,11 +1298,11 @@ end
 
 function ShouldMapBeDisplayed()
 
-	if "yes"
+	if drawMap == "yes"
 	then return true
-	elseif "no"
+	elseif drawMap == "no"
 		then return false
-	elseif "auto"
+	elseif drawMap == "auto"
 		then if client.ispaused()
 			 then return true
 			 else return false
@@ -1285,6 +1313,38 @@ function ShouldMapBeDisplayed()
 end
 
 function DrawMap()
+
+	for k in pairs(maps) do
+
+		local x = maps[k].position.x
+		local y = maps[k].position.y
+		local z = maps[k].position.z
+		
+		for l in pairs(maps[k].polygons) do
+		
+			local _dx1 = xDrawOffset-(xFollow-(x+maps[k].polygons[l].dx1))*Zoom
+			local _dz1 = yDrawOffset-(yFollow-(z+maps[k].polygons[l].dz1))*Zoom
+			local _dx2 = xDrawOffset-(xFollow-(x+maps[k].polygons[l].dx2))*Zoom
+			local _dz2 = yDrawOffset-(yFollow-(z+maps[k].polygons[l].dz2))*Zoom
+			local _dx3 = xDrawOffset-(xFollow-(x+maps[k].polygons[l].dx3))*Zoom
+			local _dz3 = yDrawOffset-(yFollow-(z+maps[k].polygons[l].dz3))*Zoom
+			
+			local _mx = xDrawOffset-(xFollow-maps[k].polygons[l].mx)*Zoom
+			local _mz = yDrawOffset-(yFollow-maps[k].polygons[l].mz)*Zoom
+			
+			local color = maps[k].polygons[l].color
+			
+			--if (_dx1 > 0 and _dx1 < 800) or (_dz1 > 0 and _dz1 < 800) or (_dx2 > 0 and _dx2 < 800) or (_dz2 > 0 and _dz2 < 800) or (_dx3 > 0 and _dx3 < 800) or (_dz3 > 0 and _dz3 < 800)
+			--then
+			Canvas.DrawPolygon({{_dx1, _dz1},{_dx2, _dz2},{_dx3, _dz3}}, 0xFF444444, maps[k].polygons[l].color)
+			--end
+			
+			--if _mx > 0 and _mx < 800 and _mz > 0 and _mz < 800
+			--then Canvas.DrawAxis(_mx, _mz, 2, 0xFF005555)
+			--end
+			
+		end
+	end
 
 end
 
@@ -1471,7 +1531,7 @@ function UpdateCanvas()
 			-- Canvas.DrawText(0, 16+16*k, ""..tostring(PointsX[k]).." , "..tostring(PointsZ[k]))
 			
 			if k > 1
-			then Canvas.DrawLine((xDrawOffset-(xFollow-PointsX[k-1])*Zoom), (yDrawOffset-(yFollow-PointsZ[k-1])*Zoom), x, z)
+			then DrawArrow((xDrawOffset-(xFollow-PointsX[k-1])*Zoom), (yDrawOffset-(yFollow-PointsZ[k-1])*Zoom), x, z, 0xFF000000)
 			end
 			
 			if math.sqrt((x-mouseX)^2+(z-mouseY)^2) < 5
@@ -1481,7 +1541,7 @@ function UpdateCanvas()
 				 Canvas.DrawEllipse(x-5, z-5, 10, 10, 0xFF000000, 0xFFFFFF00)
 				 
 				 if k > 1
-				 then Canvas.DrawLine((xDrawOffset-(xFollow-PointsX[k-1])*Zoom), (yDrawOffset-(yFollow-PointsZ[k-1])*Zoom), x, z, 0xFFFFFF00)
+				 then DrawArrow((xDrawOffset-(xFollow-PointsX[k-1])*Zoom), (yDrawOffset-(yFollow-PointsZ[k-1])*Zoom), x, z, 0xFFFFFF00)
 				 end
 				 
 				 if CanvasMode == "edit"
@@ -1503,7 +1563,7 @@ function UpdateCanvas()
 						   end
 						   client.pause()
 					  else ind = nil
-						   if autoUnpause and selected
+						   if autoUnpause --and selected
 						   then client.unpause()
 						   end
 					  end
@@ -1591,10 +1651,10 @@ function UpdateCanvas()
 	--StatusStrip
 	Canvas.DrawRectangle(0, 800, 800, 20, 0x00000000, 0xFF999999)
 	
-	for k,v in pairs(statusStripItems) do
+	for k in pairs(statusStripItems) do
 	
 		local x = statusStripItems[k].x
-		local y = statusStripItems[k].y
+		local y = 801
 		
 		if mouseX > x and mouseX < x+15 and mouseY > y and mouseY < y+15
 		then Canvas.DrawRectangle(x, y, 17, 17, 0xFFBBBBBB, 0xFFAAAAAA)
@@ -1606,11 +1666,8 @@ function UpdateCanvas()
 		
 		else Canvas.DrawRectangle(x, y, 17, 17, 0xFFBBBBBB, 0xFFDDDDDD)
 		end
-	end
-	
-	--Player Text
 
-	
+	end
 	
 	wasMouseButtL = mouseButt["Left"]
 	wasMouseButtM = mouseButt["Middle"]
@@ -1760,22 +1817,12 @@ end
 
 function BranchRemoved(index)
 	
-	local br = tastudio.getbranches()
+	local branches = tastudio.getbranches()
 	
-	for i = table.getn(br), index , -1 do
-	
-		--bla = os.rename(movie.filename()..tostring(i+1)..".ptl", movie.filename()..tostring(i)..".ptl.temp")
-		--bla2 = os.rename(movie.filename()..tostring(i)..".ptl.temp", movie.filename()..tostring(i)..".ptl")
-		--print(i)
-		--print(tostring(bla))
-		--print(tostring(bla2))
-		--num branches 5
-		--delete #2
-		--new num branches 4
-		-- #2 gets #3 filename
-		-- #3 gets #4 filename
-		-- #4 gets #5 filename
-		
+	os.remove(movie.filename()..tostring(index)..".ptl")
+
+	for i = index, table.getn(branches), 1 do
+		os.rename(movie.filename()..tostring(i+1)..".ptl", movie.filename()..tostring(i)..".ptl")
 	end
 
 end
