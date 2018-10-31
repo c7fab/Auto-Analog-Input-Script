@@ -203,6 +203,28 @@ function Sub()
 
 end;
 
+function SetIgnoreFrames()
+
+	if tastudio.engaged()
+	then local sel = tastudio.getselection()
+		 for i in pairs(sel) do
+			 ignoreFrames[sel[i]] = 1
+		 end
+	end
+
+end
+
+function UnsetIgnoreFrames()
+
+	if tastudio.engaged()
+	then local sel = tastudio.getselection()
+		 for i in pairs(sel) do
+			 ignoreFrames[sel[i]] = nil
+		 end
+	end
+
+end
+
 function CalcAngle(Xstart, Zstart, Xgoal, Zgoal)
 
 	local DeltaX = Xgoal - Xstart
@@ -587,6 +609,7 @@ end
 
 Xinput = {}
 Yinput = {}
+ignoreFrames = {}
 
 
 --Canvas
@@ -946,12 +969,12 @@ function CreateInput()
 	then local lambdax = (player.position.x - PointsX[currentWaypoint])/(PointsX[currentWaypoint+1]-PointsX[currentWaypoint])
 		 local lambdaz = (player.position.z - PointsZ[currentWaypoint])/(PointsZ[currentWaypoint+1]-PointsZ[currentWaypoint])
 		 --TODO: This is broken
-		 if (lambdax >= 1 and lambdaz >= 0.9 or lambdax >= 0.9 and lambdaz >= 1)-- Check if current waypoint has been reached. Set frame number for current one and set next waypoint as destination goal
+		 if (lambdax >= 1 and lambdaz >= 0.9) or (lambdax >= 0.9 and lambdaz >= 1)-- Check if current waypoint has been reached. Set frame number for current one and set next waypoint as destination goal
 		 then currentWaypoint = currentWaypoint + 1
 			  --print("tp:"..totalPoints.."\ncwp:"..currentWaypoint)
 			  PointsFrame[currentWaypoint] = emu.framecount()  
 		 end
-		 
+		 --print("lx:"..tostring(lambdax)..";lz:"..tostring(lambdaz))
 		 if currentWaypoint < totalPoints
 		 then FollowAngle = CalcAngle(player.position.x, player.position.z, PointsX[currentWaypoint+1], PointsZ[currentWaypoint+1])
 		 end
@@ -959,92 +982,90 @@ function CreateInput()
 	end
 	
 	if currentWaypoint < totalPoints
-	then autoUnpause = forms.ischecked(autoUnpauseCheck)
-		 if CanvasMode == "view" and autoUnpause
+	then if CanvasMode == "view" and autoUnpause
 		 then client.unpause()
 		 end
 	else client.pause()
 	end
 	
-	if Optimisation == "1: Low" 
-	then if HasGameRotatingCam == "true"
-		 then InputAngle = ((FollowAngle - camera.rotation.y - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
-		 else InputAngle = ((FollowAngle - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
-		 end
-		 Point = LineDrawing(InputAngle)
-		 if emu.framecount() >= ug
-		 then if emu.islagged()
-			  then tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", Point.X)
-				   tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", Point.Y)
-			  else tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", 0)
-				   tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", 0)
-			  end
-		 end
-	
-	elseif Optimisation == "2: Medium" --TODO: This should check angle error and adjust accordingly
-		then if firstStep == true 
-			 then if HasGameRotatingCam == "true"
-				  then InputAngle = ((FollowAngle - camera.rotation.y - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
-				  else InputAngle = ((FollowAngle - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
-				  end
-				   print("1st i:"..InputAngle)
-				  Point = LineDrawing(InputAngle)
-				  
-				  if emu.framecount() >= ug
-				  then 
-					   if emu.islagged()
-					   then tastudio.submitanalogchange(fs, "P1 X Axis", Point.X)
-							tastudio.submitanalogchange(fs, "P1 Y Axis", Point.Y)
-					   else tastudio.submitanalogchange(fs, "P1 X Axis", 0)
-							tastudio.submitanalogchange(fs, "P1 Y Axis", 0)
-					   end
-				  end
-				  tastudio.applyinputchanges()
-				  fn = fs
-				  --repeat 
-					fn = fn + 2
-				  --until not tastudio.islag(fn) or tastudio.islag(fn) == nil
-				  
-				  tastudio.setplayback(fn)
-				  
-				  if emu.framecount() == fn
-				  then 	 mov = ((MovAngle - camera.rotation.y - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2)
-						 err = (InputAngle-mov)%2*math.pi
-						 
-						print("2nd e:"..err)
-						InputAngle = (InputAngle - err)
-						print("2nd i:"..InputAngle.." mov:"..mov)
-				  
-						Point = LineDrawing(InputAngle)
-						tastudio.setplayback(fs)
-						if true --emu.framecount() >= ug
-						then --fs = emu.framecount()
-							if emu.islagged()
-							then tastudio.submitanalogchange(fs, "P1 X Axis", Point.X)
-								tastudio.submitanalogchange(fs, "P1 Y Axis", Point.Y)
-							else tastudio.submitanalogchange(fs, "P1 X Axis", 0)
-								tastudio.submitanalogchange(fs, "P1 Y Axis", 0)
-							end
-						end
-						tastudio.applyinputchanges()
-						fs = fn 
-				  
-				  end
-			 elseif firstStep == false
-				 then 
-
+	if ignoreFrames[emu.framecount()] == nil
+	then 
+		 if Optimisation == "1: Low" 
+		 then if HasGameRotatingCam == "true"
+			 then InputAngle = ((FollowAngle - camera.rotation.y - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
+			 else InputAngle = ((FollowAngle - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
 			 end
-	elseif Optimisation == "3: High" 
-		then 
+			 Point = LineDrawing(InputAngle)
+			 if emu.framecount() >= ug
+			 then if emu.islagged()
+				 then tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", Point.X)
+					 tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", Point.Y)
+				 else tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", 0)
+					 tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", 0)
+				 end
+			 end
+		 
+		 elseif Optimisation == "2: Medium" --TODO: This should check angle error and adjust accordingly
+			 then if firstStep == true 
+				 then if HasGameRotatingCam == "true"
+					 then InputAngle = ((FollowAngle - camera.rotation.y - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
+					 else InputAngle = ((FollowAngle - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
+					 end
+					 print("1st i:"..InputAngle)
+					 Point = LineDrawing(InputAngle)
+					 
+					 if emu.framecount() >= ug
+					 then 
+						 if emu.islagged()
+						 then tastudio.submitanalogchange(fs, "P1 X Axis", Point.X)
+								 tastudio.submitanalogchange(fs, "P1 Y Axis", Point.Y)
+						 else tastudio.submitanalogchange(fs, "P1 X Axis", 0)
+								 tastudio.submitanalogchange(fs, "P1 Y Axis", 0)
+						 end
+					 end
+					 tastudio.applyinputchanges()
+					 fn = fs
+					 --repeat 
+						 fn = fn + 2
+					 --until not tastudio.islag(fn) or tastudio.islag(fn) == nil
+					 
+					 tastudio.setplayback(fn)
+					 
+					 if emu.framecount() == fn
+					 then 	 mov = ((MovAngle - camera.rotation.y - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2)
+							 err = (InputAngle-mov)%2*math.pi
+							 
+							 print("2nd e:"..err)
+							 InputAngle = (InputAngle - err)
+							 print("2nd i:"..InputAngle.." mov:"..mov)
+					 
+							 Point = LineDrawing(InputAngle)
+							 tastudio.setplayback(fs)
+							 if true --emu.framecount() >= ug
+							 then --fs = emu.framecount()
+								 if emu.islagged()
+								 then tastudio.submitanalogchange(fs, "P1 X Axis", Point.X)
+									 tastudio.submitanalogchange(fs, "P1 Y Axis", Point.Y)
+								 else tastudio.submitanalogchange(fs, "P1 X Axis", 0)
+									 tastudio.submitanalogchange(fs, "P1 Y Axis", 0)
+								 end
+							 end
+							 tastudio.applyinputchanges()
+							 fs = fn 
+					 
+					 end
+				 elseif firstStep == false
+					 then 
+	 
+				 end
+		 elseif Optimisation == "3: High" 
+			 then 
+		 end
+			 
+		 tastudio.applyinputchanges()
 	end
 	
-	
-	
-	
-	
-	tastudio.applyinputchanges()
-
-end;
+end
 
 ------------------------------
 --Waypoint Editing Functions--
@@ -1640,8 +1661,6 @@ function UpdateCanvas()
 	Canvas.DrawLine(0, (yDrawOffset-yFollow*Zoom), 800, (yDrawOffset-yFollow*Zoom), 0x55000000)
 	Canvas.DrawText((xDrawOffset-xFollow*Zoom), (yDrawOffset-yFollow*Zoom), "(0;0)")
 	
-	
-
 	mouseX = Canvas.GetMouseX()
 	mouseY = Canvas.GetMouseY()
 	
@@ -1660,14 +1679,7 @@ function UpdateCanvas()
 	--Canvas.DrawText(0, 120, tostring(selectedObject.x)..","..tostring(selectedObject.z)..","..tostring(mouseOverObject))
 	Canvas.DrawText(0, 120, tostring(object[2])..","..tostring(object[4])..","..tostring(object[1]))
 	
-
-	
-	
 	DrawCamera()
-	
-	
-	
-
 	
 	--keyb = input.get() FUCK doesn't work on Canvas
 	--print(tostring(keyb["K"]))
@@ -1675,8 +1687,7 @@ function UpdateCanvas()
 		 -- then xDrawOffset = 400
 			  -- yDrawOffset = 400
 		 -- end
-	
-	
+
 	local waypoint = DrawWaypoints()
 	Canvas.DrawText(0, 64, tostring(xDrawOffset)..";"..tostring(yDrawOffset).."\n"..tostring(currentWaypoint)..","..tostring(waypoint))
 	
@@ -1691,6 +1702,7 @@ function UpdateCanvas()
 	
 	
 	wasMouseButtL = mouseButt["Left"]
+	wasMouseButtR = mouseButt["Right"]
 	wasMouseButtM = mouseButt["Middle"]
 	oldMouseX = mouseX
 	oldMouseY = mouseY
@@ -1737,6 +1749,14 @@ function ResetCurrentWaypoint(frame)
 		end
 
 	end
+end
+
+function TAStudioColor(index, column)
+
+	if (column == "P1 X Axis" or column == "P1 Y Axis") and ignoreFrames[index] ~= nil
+	then return 0xEDB7FF
+	end
+
 end
 
 function UnGreen(index)
@@ -1849,17 +1869,18 @@ function FE()
 	done = true
 
 end
-
-tastudio.ongreenzoneinvalidated(UnGreen)
-tastudio.onbranchsave(BranchSaved)
-tastudio.onbranchload(BranchLoaded)
-tastudio.onbranchremove(BranchRemoved)
-
-event.onexit(Exit)
---event.onframeend(FE)
-
 if tastudio.engaged()
-then local file = io.open(movie.filename().."c.ptl", "r")
+then tastudio.ongreenzoneinvalidated(UnGreen)
+	 tastudio.onqueryitembg(TAStudioColor)
+	 tastudio.onbranchsave(BranchSaved)
+	 tastudio.onbranchload(BranchLoaded)
+	 tastudio.onbranchremove(BranchRemoved)
+
+	 event.onexit(Exit)
+	 event.onframeend(FE)
+
+
+	 local file = io.open(movie.filename().."c.ptl", "r")
 	 if file ~= nil
 	 then currentWaypoint = tonumber(file:read("*line"))
 	
@@ -1886,6 +1907,7 @@ then local file = io.open(movie.filename().."c.ptl", "r")
 while true do
 
 	f = emu.framecount()
+	autoUnpause = forms.ischecked(autoUnpauseCheck)
 	
 	if f > ug
 	then ug = f
@@ -1903,13 +1925,15 @@ while true do
 	end
 
 	if StartFlag and not PauseFlag-- and not done
-	then CreateInput()
+	then --CreateInput()
 	end
+	
 	f_old = f;
 	done = true
 	
 	inget = input.get()
 	
+	--TODO: tap: just once. hold for long time: continue with incrementing/decrementing
 	if inget.R == true and wasR == nil
 	then Add()
 	elseif inget.E == true and wasE == nil
@@ -1918,11 +1942,17 @@ while true do
 	then Sub()
 	elseif inget.U == true
 	then Add()
+	elseif inget.I == true and wasI == nil
+	then SetIgnoreFrames()
+	elseif inget.O == true and wasO == nil
+	then UnsetIgnoreFrames()
 	end
 	
 	wasR = inget.R
 	wasE = inget.E
 	wasP = inget.P
+	wasI = inget.I
+	wasO = inget.O
 
 	emu.yield()
 
