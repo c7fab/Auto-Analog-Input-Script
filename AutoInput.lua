@@ -19,6 +19,9 @@ function Start()
 			  forms.settext(StatLabel, "Started")
 			  UseCanv = true
 			  fs = emu.framecount()
+			  if autoUnpause
+			  then client.unpause()
+			  end
 			 -- currentWaypoint = 1
 		 end;
 	end;
@@ -236,13 +239,13 @@ end
 
 function ZoomIn()
 
-	Zoom = Zoom*1.01
+	Zoom = Zoom*1.05
 	
 end
 
 function ZoomOut()
 
-	Zoom = Zoom*0.99
+	Zoom = Zoom*0.95
 	
 end
 
@@ -349,14 +352,8 @@ end
 
 function DeleteAllWaypoints()
 
-	for i = totalPoints, 1, -1 do
-			
-			table.remove(PointsX, i)--Delete every point if first one is clicked
-			table.remove(PointsZ, i)
-			table.remove(PointsFrame, i)
-			totalPoints = totalPoints -1
-			
-	end
+	DeleteWayPoint(1)
+	
 end
 
 -- This function creates the main window.
@@ -1049,21 +1046,10 @@ function CreateInput()
 
 end;
 
-function MarkerControl()
-
-	--marker = tastudio.getmarker(emu.framecount())
-	
-	--if bizstring.startswith(marker, "a=")
-	--then s = bizstring.remove(marker, 0,2)
-	--	 forms.settext(AngFollowTxt, s)
-	--	 FollowAngle = tonumber(s);
-	--end
-
-
-end
-
-
-
+------------------------------
+--Waypoint Editing Functions--
+------------------------------
+--Adds a new waypoint continuing from the last one.
 function AppendWayPoint(MX, MY)
 	
 	if totalPoints == 0
@@ -1081,7 +1067,20 @@ function AppendWayPoint(MX, MY)
 	
 end
 
+--Deletes one or all waypoints.
 function DeleteWayPoint(index)
+	
+	if PointsFrame[index-1] ~= nil
+	then if currentWaypoint > index-1
+		 then tastudio.setplayback(PointsFrame[index-1])
+			  currentWaypoint = index-1
+			  ug = PointsFrame[index-1]
+		 end
+	elseif currentWaypoint > index-1
+		then tastudio.setplayback(PointsFrame[1])
+			 currentWaypoint = 1
+			 ug = PointsFrame[1]
+		end
 	
 	if index == 1
 	then for i = totalPoints, 1, -1 do
@@ -1109,17 +1108,32 @@ function DeleteWayPoint(index)
 
 end
 
+--Splits the path between two waypoints in the middle. A new waypoint is added.
 function SplitPath(index)
 	--TODO: insert the new point to the yellow colored line segment (inserting at index crashes the script )
 	table.insert(PointsX, index+1, (PointsX[index]+(PointsX[index+1]-PointsX[index])/2))
 	table.insert(PointsZ, index+1, (PointsZ[index]+(PointsZ[index+1]-PointsZ[index])/2))
 	table.insert(PointsFrame, index+1, nil)
 	totalPoints = totalPoints + 1
+	
+	if PointsFrame[index] ~= nil
+	then if currentWaypoint > index
+		 then tastudio.setplayback(PointsFrame[index])
+			  currentWaypoint = index
+			  ug = PointsFrame[index]
+		 end
+	elseif currentWaypoint > index
+	    then tastudio.setplayback(PointsFrame[1])
+			 currentWaypoint = 1
+			 ug = PointsFrame[1]
+	end
 
 end
 
-
-
+----------------------------
+--Canvas Drawing Functions--
+----------------------------
+--Draws and arrow from (x1, y1) to (x2, y2) with the corresponding color on the canvas
 function DrawArrow(x1, y1, x2, y2, color)
 
 	local alpha = math.atan2(x2-x1, y2-y1)
@@ -1138,7 +1152,12 @@ function DrawArrow(x1, y1, x2, y2, color)
 	
 end
 
+--Draws the player on the canvas.
 function DrawPlayer(x, y, radius)
+
+	--Player coordinate lines
+	Canvas.DrawLine(xDrawOffset-(xFollow-player.position.x)*Zoom, 0, xDrawOffset-(xFollow-player.position.x)*Zoom, 800, 0x55FF0000)
+	Canvas.DrawLine(0, yDrawOffset-(yFollow-player.position.z)*Zoom, 800, yDrawOffset-(yFollow-player.position.z)*Zoom, 0x55FF0000)
 
 	local fullInfoDraw = false
 
@@ -1207,6 +1226,7 @@ function DrawPlayer(x, y, radius)
 	
  end
 
+ --Draws the camera on the canvas.
 function DrawCamera()
 
 	if camera.position.x ~= nil and camera.position.z ~= nil
@@ -1264,35 +1284,41 @@ function DrawCamera()
 
 end
 
-function DrawObject(x, y, z, radius)	
-	
-	
-	local dx = xFollow - x
-	local dz = yFollow - z
-	local rT = {rx = nil, ry = nil, rz = nil}
+--Draws objects on the canvas.
+function DrawObject()	
 	local mouseOverObject = false
-
+	local rx = nil
+	local ry = nil
+	local rz = nil
 	
-	
-	
-	if math.sqrt((xDrawOffset-dx*Zoom-mouseX)^2+(yDrawOffset-dz*Zoom-mouseY)^2) >= 5
-	then Canvas.DrawEllipse(xDrawOffset-(dx+radius)*Zoom, yDrawOffset-(dz+radius)*Zoom,
-					   2*radius*Zoom, 2*radius*Zoom, 0xFF005500, 0x5500FF00)
-		 Canvas.DrawAxis(xDrawOffset-dx*Zoom, yDrawOffset-dz*Zoom, 5, 0x5500FF00)		 
-	else Canvas.DrawEllipse(xDrawOffset-(dx+radius)*Zoom, yDrawOffset-(dz+radius)*Zoom,
-					   2*radius*Zoom, 2*radius*Zoom, 0xFF00AA00, 0x5500FF00)
-		 Canvas.DrawAxis(xDrawOffset-dx*Zoom, yDrawOffset-dz*Zoom, 5, 0x5500FF00)
-	
-		 Canvas.DrawText(xDrawOffset-dx*Zoom+16, yDrawOffset-dz*Zoom+16, 
-						 "Position:\n	X:"..tostring(x).."\n	Y:"..tostring(y).."\n	Z:"..tostring(z),
-						 0xFF000000, 0xEEDDDDDD)
-		 mouseOverObject = true
-		 rT.rx = x
-		 rT.ry = y
-		 rT.rz = z
+	for k in pairs(objects) do
+		if objects[k].active ~= nil
+		then local dx = xFollow - objects[k].position.x
+			 local dz = yFollow - objects[k].position.z
+			 
+			 
+		
+			 if math.sqrt((xDrawOffset-dx*Zoom-mouseX)^2+(yDrawOffset-dz*Zoom-mouseY)^2) >= 5
+			 then Canvas.DrawEllipse(xDrawOffset-(dx+objects[k].collision.radius)*Zoom, yDrawOffset-(dz+objects[k].collision.radius)*Zoom,
+									 2*objects[k].collision.radius*Zoom, 2*objects[k].collision.radius*Zoom, 0xFF005500, 0x5500FF00)
+				  Canvas.DrawAxis(xDrawOffset-dx*Zoom, yDrawOffset-dz*Zoom, 5, 0x5500FF00)		 
+			 else Canvas.DrawEllipse(xDrawOffset-(dx+objects[k].collision.radius)*Zoom, yDrawOffset-(dz+objects[k].collision.radius)*Zoom,
+									 2*objects[k].collision.radius*Zoom, 2*objects[k].collision.radius*Zoom, 0xFF00AA00, 0x5500FF00)
+				 Canvas.DrawAxis(xDrawOffset-dx*Zoom, yDrawOffset-dz*Zoom, 5, 0x5500FF00)
+			
+				 Canvas.DrawText(xDrawOffset-dx*Zoom+16, yDrawOffset-dz*Zoom+16, 
+								 "Position:\n	X:"..tostring(objects[k].position.x).."\n	Y:"..tostring(objects[k].position.y).."\n	Z:"..tostring(objects[k].position.z),
+								 0xFF000000, 0xEEDDDDDD)
+				 mouseOverObject = true
+				 rx = objects[k].position.x
+				 ry = objects[k].position.y
+				 rz = objects[k].position.z
+				-- Canvas.DrawText(0, 140, tostring(rx)..";"..tostring(rz))
+			 end
+		end
 	end
 	
-	return mouseOverObject, rT
+	return mouseOverObject, rx, ry, rz
 
 end
 
@@ -1312,6 +1338,7 @@ function ShouldMapBeDisplayed()
 
 end
 
+--Draws level maps on the canvas.
 function DrawMap()
 
 	for k in pairs(maps) do
@@ -1348,81 +1375,133 @@ function DrawMap()
 
 end
 
-function UpdateCanvas()
+--Draws the waypoints on the canvas and handles editing them. Return value is the selected waypoint.
+function DrawWaypoints()
 
-	Canvas.Clear(0xFFFFFFFF)
-	--XPosition = memory.readfloat(XPosAddr, true);
-	--ZPosition = memory.readfloat(YPosAddr, true);
 	Pselection = {}
-	--selected = false
-	--TODO:resizable canvas
-	--TODO:Zooming
-	--xDrawOffset = xDrawOffset
-	--yDrawOffset = yDrawOffset
 	
-	if follow == "none"
-	then xFollow = 0
-		 yFollow = 0
-	elseif follow == "player"
-		then xFollow = player.position.x
-			 yFollow = player.position.z
-	end
+		for k,v in pairs(PointsX) do
 	
-	--Origin lines
-	Canvas.DrawLine((xDrawOffset-xFollow*Zoom), 0, (xDrawOffset-xFollow*Zoom), 800, 0x55000000)
-	Canvas.DrawLine(0, (yDrawOffset-yFollow*Zoom), 800, (yDrawOffset-yFollow*Zoom), 0x55000000)
-	Canvas.DrawText((xDrawOffset-xFollow*Zoom), (yDrawOffset-yFollow*Zoom), "(0;0)")
-	
-	--Player coordinate lines
-	Canvas.DrawLine(xDrawOffset-(xFollow-player.position.x)*Zoom, 0, xDrawOffset-(xFollow-player.position.x)*Zoom, 800, 0x55FF0000)
-	Canvas.DrawLine(0, yDrawOffset-(yFollow-player.position.z)*Zoom, 800, yDrawOffset-(yFollow-player.position.z)*Zoom, 0x55FF0000)
+		--print(tostring(k).." "..tostring(v))
+		
+		--print("x "..tostring(PointsX[k]))
+		--print("y "..tostring(PointsZ[k]))
+		--print(k)
+		if PointsX[k] ~= nil and PointsZ[k] ~= nil
+		then local x = (xDrawOffset-(xFollow-PointsX[k])*Zoom)
+			 local z = (yDrawOffset-(yFollow-PointsZ[k])*Zoom)
 
-	mouseX = Canvas.GetMouseX()
-	mouseY = Canvas.GetMouseY()
-	
-	mouseButt = input.getmouse()
-	
-	if ShouldMapBeDisplayed()
-	then DrawMap()
-	end
-	
-	local mouseOverObject = false
-	local selectedObject = {}
-	
-	for k in pairs(objects) do
-		if objects[k].active ~= nil
-		then local x = (xDrawOffset-(xFollow-objects[k].position.x)*Zoom)
-		     local y = (yDrawOffset-(yFollow-objects[k].position.y)*Zoom)
-		     local z = (yDrawOffset-(yFollow-objects[k].position.z)*Zoom)
-			 
-			 mouseOverObject, selectedObject = DrawObject(objects[k].position.x, objects[k].position.y, objects[k].position.z, objects[k].collision.radius)
-			 
+			 if k == 1
+			 then Canvas.DrawEllipse(x-5, z-5, 10, 10, 0xFF000000, 0xFFFF0000)--first one is red
+			 else Canvas.DrawEllipse(x-5, z-5, 10, 10, 0xFF000000, 0xFF00FF00)
+			 end
+			 --Canvas.DrawText(x, z, ""..PointsX[k].."\n"..PointsZ[k])
+			-- Canvas.DrawText(0, 16+16*k, ""..tostring(PointsX[k]).." , "..tostring(PointsZ[k]))
+			
+			if k > 1
+			then DrawArrow((xDrawOffset-(xFollow-PointsX[k-1])*Zoom), (yDrawOffset-(yFollow-PointsZ[k-1])*Zoom), x, z, 0xFF000000)
+			end
+			
+			if math.sqrt((x-mouseX)^2+(z-mouseY)^2) < 5
+			then --selected = true
+				 Pselection[k] = true
+				 Canvas.DrawText(x+16, z+16, ""..k.."\n"..PointsX[k].."\n"..PointsZ[k].."\n"..tostring(PointsFrame[k]))
+				 Canvas.DrawEllipse(x-5, z-5, 10, 10, 0xFF000000, 0xFFFFFF00)
+				 
+				 if k > 1
+				 then DrawArrow((xDrawOffset-(xFollow-PointsX[k-1])*Zoom), (yDrawOffset-(yFollow-PointsZ[k-1])*Zoom), x, z, 0xFFFFFF00)
+				 end
+				 
+				 if CanvasMode == "edit"
+				 then if mouseButt["Left"] and k > 1
+					  then ind = k
+						   selected = true
+						   PointsXCopy = PointsX[ind]
+						   PointsZCopy = PointsZ[ind]
+						   if PointsFrame[k-1] ~= nil
+						   then if currentWaypoint > k-2
+								then tastudio.setplayback(PointsFrame[k-1])
+									 currentWaypoint = k-1
+									 ug = PointsFrame[k-1]
+								end
+						   elseif currentWaypoint > k-1
+							   then tastudio.setplayback(PointsFrame[1])
+									currentWaypoint = 1
+									ug = PointsFrame[1]
+						   end
+						   client.pause()
+					  else ind = nil
+						   if autoUnpause --and selected
+						   then client.unpause()
+						   end
+					  end
+					  if mouseButt["Right"]
+					  then DeleteWayPoint(k)
+					  elseif mouseButt["Middle"] and k > 0 and k < totalPoints and not wasMouseButtM
+					  then SplitPath(k)   
+					  end
+				 elseif CanvasMode == "view"
+					 then if mouseButt["Left"]
+						  then if PointsFrame[k] ~= nil
+							   then tastudio.setplayback(PointsFrame[k])
+								    currentWaypoint = k
+							   end
+						  end
+					  
+				 end
+			else --selected = false
+				Pselection[k] = false
+			end
+
+			--Canvas.DrawText(x, z+36, tostring(Pselection[k]).."\n"..tostring(ind))
 		end
-
+		
+		
+		
 	end
+	selected = false
+	for k,v in pairs(PointsX) do
+		if Pselection[k]
+		then selected = true
+		end
+	end 
 	
 	
-	Canvas.DrawText(0, 120, tostring(selectedObject[1])..","..tostring(selectedObject[3]))
+	if ind ~= nil --and not mouseButt["Right"]-- and Pselection[ind]
+	then dmx = mouseX - oldMouseX
+		dmy = mouseY - oldMouseY
+		PointsX[ind] = PointsX[ind] + dmx/Zoom --TODO: Left+Right mouse click bug
+		PointsZ[ind] = PointsZ[ind] + dmy/Zoom
+		--if PointsX[ind] ~= PointsXCopy or PointsZ[ind] ~= PointsYCopy
+		--then print("changed "..tostring(ind)..", set "..tostring(ind-3).."as new frame")
+		   --  pointsChanged = true
+			-- if earliestChange == nil or earliestChange > ind
+			-- then earliestChange = ind
+			--		indCopy = ind
+			 --end
+			 
+		--end
+		selected = true
+	else --selected = false
 	
-	if player.collision.radius == nil
-	then DrawPlayer(xDrawOffset, yDrawOffset, 10)
-	else DrawPlayer(xDrawOffset, yDrawOffset, player.collision.radius)
-	end	
+		--if not mouseButt["Left"] and pointsChanged and indCopy ~= nil
+		--then tastudio.setplayback(PointsFrame[indCopy]); print("RESET FRAME")
+			--pointsChanged = false
+		--end
 	
-	
-	DrawCamera()
-	
-	Canvas.DrawText(0, 64, tostring(xDrawOffset)..";"..tostring(yDrawOffset).."\n"..tostring(currentWaypoint))
-	
+	end
+	---print(tostring(PointsFrame[1]))
+	--Canvas.DrawText(0,32, tostring(selected))
+	--Canvas.DrawText(0,48, tostring(totalPoints))
 
+	return selected
 	
-	--keyb = input.get() FUCK doesn't work on Canvas
-	--print(tostring(keyb["K"]))
-		 -- if keyb["K"] == true
-		 -- then xDrawOffset = 400
-			  -- yDrawOffset = 400
-		 -- end
-	if mouseX >= 0 and mouseX <= 800 and mouseY >= 0 and mouseY <= 800
+end
+
+--Handles mouse events on the canvas
+function CanvasMouse(mouseOverObject, mouseOverPoint)
+
+if mouseX >= 0 and mouseX <= 800 and mouseY >= 0 and mouseY <= 800
 	then if mouseButt["Left"] and not wasMouseButtL and not selected and CanvasMode == "edit" and not fireRCM-- adding a new waypoint
 		 then AppendWayPoint(mouseX, mouseY)
 			  if PointsFrame[totalPoints-1] ~= nil
@@ -1481,9 +1560,9 @@ function UpdateCanvas()
 								Canvas.DrawText(x,y, rightClickItems.editMode.mouseOverObject[k].text)
 							end
 					   elseif mouseOverPoint
-						   then -- TODO
-					   else --Canvas.DrawRectangle(x, y, RCListWidth, 15*table.getn(rightClickItems.editMode.notOverPoint), 0xFF666666, 0xFF666666)
-							for k, v in pairs(rightClickItems.editMode.notOverPoint) do
+						   then fireRCM = false
+					   elseif not mouseOverObject and not mouseOverPoint --Canvas.DrawRectangle(x, y, RCListWidth, 15*table.getn(rightClickItems.editMode.notOverPoint), 0xFF666666, 0xFF666666)
+						   then for k, v in pairs(rightClickItems.editMode.notOverPoint) do
 								local _y = rightClickItems.editMode.notOverPoint[k].y
 				
 								if mouseY > y+_y and mouseY < y+_y + 15 and mouseX > x and mouseX < x + RCListWidth
@@ -1509,146 +1588,12 @@ function UpdateCanvas()
 		
 	else fireRCM = false
 	end
-	
-	for k,v in pairs(PointsX) do
-	
-		--print(tostring(k).." "..tostring(v))
-		
-		--print("x "..tostring(PointsX[k]))
-		--print("y "..tostring(PointsZ[k]))
-		--print(k)
-		if PointsX[k] ~= nil and PointsZ[k] ~= nil
-		then local x = (xDrawOffset-(xFollow-PointsX[k])*Zoom)
-			 local z = (yDrawOffset-(yFollow-PointsZ[k])*Zoom)
-			 
-			 
-			 
-			 if k == 1
-			 then Canvas.DrawEllipse(x-5, z-5, 10, 10, 0xFF000000, 0xFFFF0000)--first one is red
-			 else Canvas.DrawEllipse(x-5, z-5, 10, 10, 0xFF000000, 0xFF00FF00)
-			 end
-			 --Canvas.DrawText(x, z, ""..PointsX[k].."\n"..PointsZ[k])
-			-- Canvas.DrawText(0, 16+16*k, ""..tostring(PointsX[k]).." , "..tostring(PointsZ[k]))
-			
-			if k > 1
-			then DrawArrow((xDrawOffset-(xFollow-PointsX[k-1])*Zoom), (yDrawOffset-(yFollow-PointsZ[k-1])*Zoom), x, z, 0xFF000000)
-			end
-			
-			if math.sqrt((x-mouseX)^2+(z-mouseY)^2) < 5
-			then --selected = true
-				 Pselection[k] = true
-				 Canvas.DrawText(x+16, z+16, ""..k.."\n"..PointsX[k].."\n"..PointsZ[k].."\n"..tostring(PointsFrame[k]))
-				 Canvas.DrawEllipse(x-5, z-5, 10, 10, 0xFF000000, 0xFFFFFF00)
-				 
-				 if k > 1
-				 then DrawArrow((xDrawOffset-(xFollow-PointsX[k-1])*Zoom), (yDrawOffset-(yFollow-PointsZ[k-1])*Zoom), x, z, 0xFFFFFF00)
-				 end
-				 
-				 if CanvasMode == "edit"
-				 then if mouseButt["Left"] and k > 1
-					  then ind = k
-						   selected = true
-						   PointsXCopy = PointsX[ind]
-						   PointsZCopy = PointsZ[ind]
-						   if PointsFrame[k-1] ~= nil
-						   then if currentWaypoint > k-2
-								then tastudio.setplayback(PointsFrame[k-1])
-									 currentWaypoint = k-1
-									 ug = PointsFrame[k-1]
-								end
-						   elseif currentWaypoint > k-1
-							   then tastudio.setplayback(PointsFrame[1])
-									currentWaypoint = 1
-									ug = PointsFrame[1]
-						   end
-						   client.pause()
-					  else ind = nil
-						   if autoUnpause --and selected
-						   then client.unpause()
-						   end
-					  end
-					  if mouseButt["Right"]
-					  then if PointsFrame[k-1] ~= nil
-						   then if currentWaypoint > k-1
-								then tastudio.setplayback(PointsFrame[k-1])
-									 currentWaypoint = k-1
-									 ug = PointsFrame[k-1]
-								end
-						   elseif currentWaypoint > k-1
-							   then tastudio.setplayback(PointsFrame[1])
-									currentWaypoint = 1
-									ug = PointsFrame[1]
-						   end
-						   DeleteWayPoint(k)
-					  elseif mouseButt["Middle"] and k > 0 and k < totalPoints and not wasMouseButtM
-					  then SplitPath(k)
-						   if PointsFrame[k] ~= nil
-						   then if currentWaypoint > k
-								then tastudio.setplayback(PointsFrame[k])
-									 currentWaypoint = k
-									 ug = PointsFrame[k]
-								end
-						   elseif currentWaypoint > k
-							   then tastudio.setplayback(PointsFrame[1])
-									currentWaypoint = 1
-									ug = PointsFrame[1]
-						   end
-					  end
-				 elseif CanvasMode == "view"
-					 then if mouseButt["Left"]
-						  then if PointsFrame[k] ~= nil
-							   then tastudio.setplayback(PointsFrame[k])
-								    currentWaypoint = k
-							   end
-						  end
-					  
-				 end
-			else --selected = false
-				Pselection[k] = false
-			end
 
-			--Canvas.DrawText(x, z+36, tostring(Pselection[k]).."\n"..tostring(ind))
-		end
-		
-		
-		
-	end
-	selected = false
-	for k,v in pairs(PointsX) do
-		if Pselection[k]
-		then selected = true
-		end
-	end 
-	
-	
-	if ind ~= nil --and not mouseButt["Right"]-- and Pselection[ind]
-	then dmx = mouseX - oldMouseX
-		dmy = mouseY - oldMouseY
-		PointsX[ind] = PointsX[ind] + dmx/Zoom --TODO: Left+Right mouse click bug
-		PointsZ[ind] = PointsZ[ind] + dmy/Zoom
-		--if PointsX[ind] ~= PointsXCopy or PointsZ[ind] ~= PointsYCopy
-		--then print("changed "..tostring(ind)..", set "..tostring(ind-3).."as new frame")
-		   --  pointsChanged = true
-			-- if earliestChange == nil or earliestChange > ind
-			-- then earliestChange = ind
-			--		indCopy = ind
-			 --end
-			 
-		--end
-		selected = true
-	else --selected = false
-	
-		--if not mouseButt["Left"] and pointsChanged and indCopy ~= nil
-		--then tastudio.setplayback(PointsFrame[indCopy]); print("RESET FRAME")
-			--pointsChanged = false
-		--end
-	
-	end
-	---print(tostring(PointsFrame[1]))
-	--Canvas.DrawText(0,32, tostring(selected))
-	--Canvas.DrawText(0,48, tostring(totalPoints))
-	
-	--StatusStrip
+end
+
+--Draws the status-strip items and handles their functions.
+function StatusStrip()
+
 	Canvas.DrawRectangle(0, 800, 800, 20, 0x00000000, 0xFF999999)
 	
 	for k in pairs(statusStripItems) do
@@ -1669,6 +1614,82 @@ function UpdateCanvas()
 
 	end
 	
+end
+
+-------------------------
+--Main Canvas Functions--
+-------------------------
+function UpdateCanvas()
+
+	Canvas.Clear(0xFFFFFFFF)
+	
+	--selected = false
+	--TODO:resizable canvas
+	--TODO:fix Zooming
+	
+	if follow == "none"
+	then xFollow = 0
+		 yFollow = 0
+	elseif follow == "player"
+		then xFollow = player.position.x
+			 yFollow = player.position.z
+	end
+	
+	--Origin lines
+	Canvas.DrawLine((xDrawOffset-xFollow*Zoom), 0, (xDrawOffset-xFollow*Zoom), 800, 0x55000000)
+	Canvas.DrawLine(0, (yDrawOffset-yFollow*Zoom), 800, (yDrawOffset-yFollow*Zoom), 0x55000000)
+	Canvas.DrawText((xDrawOffset-xFollow*Zoom), (yDrawOffset-yFollow*Zoom), "(0;0)")
+	
+	
+
+	mouseX = Canvas.GetMouseX()
+	mouseY = Canvas.GetMouseY()
+	
+	mouseButt = input.getmouse()
+	
+	if ShouldMapBeDisplayed()
+	then DrawMap()
+	end
+	
+	--local mouseOverObject = false
+	--local selectedObject = {x = nil, y = nil, z = nil}
+	
+	local object = {DrawObject()}
+	--mouseOverObject, selectedObject = 
+	--
+	--Canvas.DrawText(0, 120, tostring(selectedObject.x)..","..tostring(selectedObject.z)..","..tostring(mouseOverObject))
+	Canvas.DrawText(0, 120, tostring(object[2])..","..tostring(object[4])..","..tostring(object[1]))
+	
+
+	
+	
+	DrawCamera()
+	
+	
+	
+
+	
+	--keyb = input.get() FUCK doesn't work on Canvas
+	--print(tostring(keyb["K"]))
+		 -- if keyb["K"] == true
+		 -- then xDrawOffset = 400
+			  -- yDrawOffset = 400
+		 -- end
+	
+	
+	local waypoint = DrawWaypoints()
+	Canvas.DrawText(0, 64, tostring(xDrawOffset)..";"..tostring(yDrawOffset).."\n"..tostring(currentWaypoint)..","..tostring(waypoint))
+	
+	if player.collision.radius == nil
+	then DrawPlayer(xDrawOffset, yDrawOffset, 10)
+	else DrawPlayer(xDrawOffset, yDrawOffset, player.collision.radius)
+	end	
+	
+	StatusStrip()
+		
+	CanvasMouse(object[1], waypoint)
+	
+	
 	wasMouseButtL = mouseButt["Left"]
 	wasMouseButtM = mouseButt["Middle"]
 	oldMouseX = mouseX
@@ -1677,22 +1698,9 @@ function UpdateCanvas()
 	Canvas.Refresh()
 end
 
-function GetMarkerNoteAboveFrame(frame)
-
-	local markerText
-	local i = frame
-	
-	repeat 
-	
-		markerText = tastudio.getmarker(i)
-		i = i - 1
-	
-	until i == 0 or markerText ~= ""
-	
-	return markerText
-
-end
-
+----------------------
+--TAStudio Functions--
+----------------------
 function CheckMarkers(frame)
 	--TODO: Put a marker check when greenzone invalidates, return false if the frame is outside current segment/level
 	--# as first char in marker note means new session
@@ -1740,21 +1748,10 @@ function UnGreen(index)
 	 	if CheckMarkers(ug)
 		then ResetCurrentWaypoint(ug)
 		end
-		--print("asdasdfdsf")
 	end
 
-
-
-	--print(tostring(ug))
-
-	
-	
-	
-
-
-
 end
---TODO: Save current waypoint in files instead of PointsFrame[1] twice
+
 function BranchSaved(index)
 	
 	local file = io.open(movie.filename()..tostring(index)..".ptl", "w+")
