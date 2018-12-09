@@ -18,10 +18,10 @@ function Start()
 			  StartFlag = true
 			  forms.settext(StatLabel, "Started")
 			  UseCanv = true
-			  fs = emu.framecount()
-			  if autoUnpause
-			  then client.unpause()
-			  end
+			 -- fs = emu.framecount()
+			 ---- if autoUnpause
+			  --then client.unpause()
+			  --end
 			 -- currentWaypoint = 1
 		 end;
 	end;
@@ -378,6 +378,41 @@ function DeleteAllWaypoints()
 	
 end
 
+function OkInsertingButton()
+	
+	table.insert(IndexToInsert, tonumber(forms.gettext(IndexText)))
+	table.insert(LambdaToInsert, tonumber(forms.gettext(LambdaText)))
+	table.insert(ButtonToInsert, tostring(forms.gettext(ButtonText)))
+	
+	insertButtonFormActive = false
+	forms.destroy(IBForm)
+
+end
+
+function CancelInsertingButton()
+
+	insertButtonFormActive = false
+	forms.destroy(IBForm)
+
+end
+
+function InsertButtonF()
+
+	if not insertButtonFormActive
+	then insertButtonFormActive = true
+		 IBForm = forms.newform(100, 200, "Insert Button")
+		
+		 IndexText = forms.textbox(IBForm, "index", 50, 20, nil, 5, 5)
+		 LambdaText = forms.textbox(IBForm, "lambda", 50, 20, nil, 5, 35)
+		
+		 ButtonText = forms.textbox(IBForm, "button",50, 20, nil, 5, 65)
+		
+		 forms.button(IBForm, "OK", OkInsertingButton, 5, 90)
+		 forms.button(IBForm, "Cancel", CancelInsertingButton, 5, 130)
+	end
+	
+end
+
 -- This function creates the main window.
 function WindowForm()
 
@@ -424,6 +459,8 @@ function WindowForm()
 	
 	
 	autoUnpauseCheck = forms.checkbox(Window, "Auto Unpause:", 10, 300)
+	
+	InsertButton = forms.button(Window, "Insert Button",InsertButtonF, 5, 330)
 	
 	
 
@@ -623,6 +660,12 @@ CPoints = {X, Z} --TODO
 PointsX = {}
 PointsZ = {}
 PointsFrame = {}
+
+--TODO: Make better table, use T[waypointindex][number] = {lambda, button}
+IndexToInsert = {}
+LambdaToInsert = {}
+ButtonToInsert = {}
+
 totalPoints = 0
 selected = false
 ind = nil
@@ -655,6 +698,8 @@ rightClickItems = {editMode = {mouseOverPoint = {setPosition = {y = 0, text = "S
 							   notOverPoint = {addWaypoint = {y = 0, text = "Add new waypoint", clickFunction = AppendWaypointForm},
 											   deleteAllWaypoints = {y = 15, text = "Delete all waypoints", clickFunction = DeleteAllWaypoints}
 											  },
+							   mouseOverLine = {insertButton = {y = 0, text = "Insert button", clickFunction = nil}
+											   },
 							   mouseOverObject = {goToObject = {y = 0, text = "Go to object", clickFunction = nil}
 												 }
 							  }
@@ -683,6 +728,7 @@ autoUnpause = false
 firstStep = true
 
 appendWayPointFormActive = false
+insertButtonFormActive = false
 
 tastudio.clearinputchanges()
 
@@ -964,10 +1010,13 @@ function CreateInput()
 				  end
 		 end
 	end
-
+	
+	
+	
 	if totalPoints > 1 and UseCanv and currentWaypoint < totalPoints and currentWaypoint >= 1 --and PointsFrame[currentWaypoint+1] ~= nil
-	then local lambdax = (player.position.x - PointsX[currentWaypoint])/(PointsX[currentWaypoint+1]-PointsX[currentWaypoint])
-		 local lambdaz = (player.position.z - PointsZ[currentWaypoint])/(PointsZ[currentWaypoint+1]-PointsZ[currentWaypoint])
+	then lambdax = (player.position.x - PointsX[currentWaypoint])/(PointsX[currentWaypoint+1]-PointsX[currentWaypoint])
+		 lambdaz = (player.position.z - PointsZ[currentWaypoint])/(PointsZ[currentWaypoint+1]-PointsZ[currentWaypoint])
+		 
 		 --TODO: This is broken
 		 if (lambdax >= 1 and lambdaz >= 0.9) or (lambdax >= 0.9 and lambdaz >= 1)-- Check if current waypoint has been reached. Set frame number for current one and set next waypoint as destination goal
 		 then currentWaypoint = currentWaypoint + 1
@@ -978,15 +1027,12 @@ function CreateInput()
 		 if currentWaypoint < totalPoints
 		 then FollowAngle = CalcAngle(player.position.x, player.position.z, PointsX[currentWaypoint+1], PointsZ[currentWaypoint+1])
 		 end
+		 --TODO: move down
+		 
 	else
 	end
 	
-	if currentWaypoint < totalPoints
-	then if CanvasMode == "view" and autoUnpause
-		 then client.unpause()
-		 end
-	else client.pause()
-	end
+
 	
 	if ignoreFrames[emu.framecount()] == nil
 	then 
@@ -1000,20 +1046,36 @@ function CreateInput()
 			 then if emu.islagged()
 				 then tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", Point.X)
 					 tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", Point.Y)
+					 for k,v in pairs(IndexToInsert) do
+			
+			 if IndexToInsert[k] == currentWaypoint
+			 then if (lambdax >= LambdaToInsert[k]-0.05 and lambdax <= LambdaToInsert[k]+0.05) and (lambdaz >= LambdaToInsert[k]-0.05 and lambdaz <= LambdaToInsert[k]+0.05)
+				  then tastudio.submitinputchange(emu.framecount(), ButtonToInsert[k], true)
+						--tastudio.applyinputchanges()
+						--TODO:smarter button setting
+						table.remove(IndexToInsert, k)
+						table.remove(LambdaToInsert, k)
+						table.remove(ButtonToInsert, k)
+				  end
+				  
+			 end
+		 end
 				 else tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", 0)
 					 tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", 0)
 				 end
+				 
 			 end
-		 
+		 tastudio.applyinputchanges()
 		 elseif Optimisation == "2: Medium" --TODO: This should check angle error and adjust accordingly
-			 then if firstStep == true 
+			 then fs = emu.framecount()
+				 if firstStep == true 
 				 then if HasGameRotatingCam == "true"
 					 then InputAngle = ((FollowAngle - camera.rotation.y - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
 					 else InputAngle = ((FollowAngle - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2);
 					 end
-					 print("1st i:"..InputAngle)
-					 Point = LineDrawing(InputAngle)
 					 
+					 Point = LineDrawing(InputAngle)
+					 print("1st i:"..InputAngle.." X: ".. Point.X.." Y:"..Point.Y)
 					 if emu.framecount() >= ug
 					 then 
 						 if emu.islagged()
@@ -1024,23 +1086,37 @@ function CreateInput()
 						 end
 					 end
 					 tastudio.applyinputchanges()
+					 
 					 fn = fs
 					 --repeat 
 						 fn = fn + 2
 					 --until not tastudio.islag(fn) or tastudio.islag(fn) == nil
-					 
 					 tastudio.setplayback(fn)
+					 firstStep = false
+					 
+					 end
+				if firstStep == false
+					 then 
 					 
 					 if emu.framecount() == fn
-					 then 	 mov = ((MovAngle - camera.rotation.y - settings.angle.offset) % settings.angle.modulo)*math.pi/(settings.angle.modulo/2)
-							 err = (InputAngle-mov)%2*math.pi
+					 then 	 MovAngle = memory.readfloat(MovAngAddr, true)
+							mov = (MovAngle) % (settings.angle.modulo)*math.pi/(settings.angle.modulo/2)
+							fol = (FollowAngle) % (settings.angle.modulo)*math.pi/(settings.angle.modulo/2)
+							 print("2nd mov:"..mov)
+							 print("2nd fol:"..fol)
 							 
+							 err = (fol-mov)%2*math.pi
 							 print("2nd e:"..err)
+							 if err ~= 0
+							 then 
+							-- 
 							 InputAngle = (InputAngle - err)
-							 print("2nd i:"..InputAngle.." mov:"..mov)
+							 
 					 
 							 Point = LineDrawing(InputAngle)
-							 tastudio.setplayback(fs)
+							 print("2nd i:"..InputAngle.." X: ".. Point.X.." Y:"..Point.Y)
+							 
+							 --tastudio.setplayback(fs)
 							 if true --emu.framecount() >= ug
 							 then --fs = emu.framecount()
 								 if emu.islagged()
@@ -1050,19 +1126,22 @@ function CreateInput()
 									 tastudio.submitanalogchange(fs, "P1 Y Axis", 0)
 								 end
 							 end
+							  
 							 tastudio.applyinputchanges()
+							 
+							 end
 							 fs = fn 
-					 
-					 end
-				 elseif firstStep == false
-					 then 
-	 
+							 firstStep = true
+							 
+							 tastudio.setplayback(fn)
+	 end
 				 end
 		 elseif Optimisation == "3: High" 
 			 then 
 		 end
-			 
-		 tastudio.applyinputchanges()
+		  
+		 
+		 
 	end
 	
 end
@@ -1398,7 +1477,8 @@ end
 
 --Draws the waypoints on the canvas and handles editing them. Return value is the selected waypoint.
 function DrawWaypoints()
-
+	
+	mouseOverLine = false
 	Pselection = {}
 	
 		for k,v in pairs(PointsX) do
@@ -1421,12 +1501,38 @@ function DrawWaypoints()
 			
 			if k > 1
 			then DrawArrow((xDrawOffset-(xFollow-PointsX[k-1])*Zoom), (yDrawOffset-(yFollow-PointsZ[k-1])*Zoom), x, z, 0xFF000000)
+				 
+				 local x_ = (xDrawOffset-(xFollow-PointsX[k-1])*Zoom)
+				 local z_ = (yDrawOffset-(yFollow-PointsZ[k-1])*Zoom)
+				 
+				-- local p_x = x_+((mouseX-x_)*(x-x_)+(mouseY-z_)*(z-z_)/(x-x_)*(x-x_)+(z-z_)*(z-z_))*(x-x_)
+				--local p_z = z_+((mouseX-x_)*(x-x_)+(mouseY-z_)*(z-z_)/(x-x_)*(x-x_)+(z-z_)*(z-z_))*(z-z_)
+				 
+				 local l = -(((x_-mouseX)*(x-x_)+(z_-mouseY)*(z-z_))/((x-x_)^2+(z-z_)^2))
+				 
+				 local p_x = x_ + l*(x-x_)
+				 local p_z = z_ + l*(z-z_)
+				 
+				 if math.sqrt((p_x-mouseX)^2+(p_z-mouseY)^2) < 5 and l < 1 and l > 0
+				 then Canvas.DrawAxis(p_x, p_z, 10, 0xFFFF0000)
+					  
+					  mouseOverLine = true
+				 
+				 end
+				-- Canvas.DrawText(0,500, p_x.."\n"..p_z)
 			end
+			
+			
 			
 			if math.sqrt((x-mouseX)^2+(z-mouseY)^2) < 5
 			then --selected = true
 				 Pselection[k] = true
-				 Canvas.DrawText(x+16, z+16, ""..k.."\n"..PointsX[k].."\n"..PointsZ[k].."\n"..tostring(PointsFrame[k]))
+				 local angle = 0
+				 if PointsX[k-1] ~= nil 
+				 then angle = math.atan2(-(PointsZ[k]-PointsZ[k-1]),(PointsX[k]-PointsX[k-1])) * (180/math.pi)
+				 end
+				 
+				 Canvas.DrawText(x+16, z+16, ""..k.."\n"..PointsX[k].."\n"..PointsZ[k].."\n"..tostring(PointsFrame[k]).."\n"..tostring(angle))
 				 Canvas.DrawEllipse(x-5, z-5, 10, 10, 0xFF000000, 0xFFFFFF00)
 				 
 				 if k > 1
@@ -1453,7 +1559,7 @@ function DrawWaypoints()
 						   client.pause()
 					  else ind = nil
 						   if autoUnpause --and selected
-						   then client.unpause()
+						   then --client.unpause()
 						   end
 					  end
 					  if mouseButt["Right"]
@@ -1503,6 +1609,7 @@ function DrawWaypoints()
 			 
 		--end
 		selected = true
+		client.pause()
 	else --selected = false
 	
 		--if not mouseButt["Left"] and pointsChanged and indCopy ~= nil
@@ -1517,6 +1624,39 @@ function DrawWaypoints()
 
 	return selected
 	
+end
+
+function RightClickMenu(menu)
+
+	local x = mX
+	local y = mY
+	
+	if 800 - x < RCListWidth 
+	then x = x - RCListWidth
+	end
+	
+	if 800 - y < RCListHeight
+	then y = y - RCListHeight
+	end
+
+	for k, v in pairs(menu) do
+		local _y = menu[k].y
+		
+		if mouseY > y+_y and mouseY < y+_y + 15 and mouseX > x and mouseX < x + RCListWidth
+		then Canvas.DrawText(x,y+_y, menu[k].text, 0xFF000000, 0xFFAAAAAA)
+			if mouseButt["Left"]
+			then menu[k].clickFunction()
+				fireRCM = false
+			end
+		else Canvas.DrawText(x,y+_y, menu[k].text, 0xFF000000, 0xFF666666)
+			if mouseButt["Left"]
+			then fireRCM = false
+			end
+	end
+	end
+	
+	--fireRCM = false
+
 end
 
 --Handles mouse events on the canvas
@@ -1565,39 +1705,15 @@ if mouseX >= 0 and mouseX <= 800 and mouseY >= 0 and mouseY <= 800
 				mouseMoved = false
 			 -- end
 			 if fireRCM
-			 then local x = mX
-				  local y = mY
-				  
-				  if 800 - x < RCListWidth 
-				  then x = x - RCListWidth
-				  end
-				  
-				  if 800 - y < RCListHeight
-				  then y = y - RCListHeight
-				  end
-				  if CanvasMode == "edit"
+			 then if CanvasMode == "edit"
 				  then if mouseOverObject
-					   then for k, v in pairs(rightClickItems.editMode.mouseOverObject) do
-								Canvas.DrawText(x,y, rightClickItems.editMode.mouseOverObject[k].text)
-							end
+					   then RightClickMenu(rightClickItems.editMode.mouseOverObject)
 					   elseif mouseOverPoint
 						   then fireRCM = false
-					   elseif not mouseOverObject and not mouseOverPoint --Canvas.DrawRectangle(x, y, RCListWidth, 15*table.getn(rightClickItems.editMode.notOverPoint), 0xFF666666, 0xFF666666)
-						   then for k, v in pairs(rightClickItems.editMode.notOverPoint) do
-								local _y = rightClickItems.editMode.notOverPoint[k].y
-				
-								if mouseY > y+_y and mouseY < y+_y + 15 and mouseX > x and mouseX < x + RCListWidth
-								then Canvas.DrawText(x,y+_y, rightClickItems.editMode.notOverPoint[k].text, 0xFF000000, 0xFFAAAAAA)
-								     if mouseButt["Left"]
-									 then rightClickItems.editMode.notOverPoint[k].clickFunction()
-										  fireRCM = false
-									 end
-								else Canvas.DrawText(x,y+_y, rightClickItems.editMode.notOverPoint[k].text, 0xFF000000, 0xFF666666)
-									 if mouseButt["Left"]
-									 then fireRCM = false
-									 end
-								end
-							end
+					   elseif not mouseOverObject and not mouseOverPoint and not mouseOverLine --Canvas.DrawRectangle(x, y, RCListWidth, 15*table.getn(rightClickItems.editMode.notOverPoint), 0xFF666666, 0xFF666666)
+						   then RightClickMenu(rightClickItems.editMode.notOverPoint)		
+					   elseif mouseOverLine
+						   then RightClickMenu(rightClickItems.editMode.mouseOverLine)
 					   end
 				  end
 				  
@@ -1772,8 +1888,9 @@ function UnGreen(index)
 
 end
 
-function BranchSaved(index)
-	
+function SaveFiles(index)
+
+	--Save waypoint list
 	local file = io.open(movie.filename()..tostring(index)..".ptl", "w+")
 	
 	file:write(tostring(currentWaypoint.."\n"))
@@ -1783,12 +1900,20 @@ function BranchSaved(index)
 	end
 	
 	file:close()
-
+	
+	--Save ignore frames
+	file = io.open(movie.filename()..tostring(index)..".igf", "w+")
+	
+	for i = 0, movie.length(), 1 do
+		file:write(tostring(ignoreFrames[i]).."\n")
+	end
+	
 end
 
-function BranchLoaded(index)
+function LoadFiles(index)
 	
-	if index ~= -1
+	--Save backup files
+	if index > -1
 	then local backup = io.open(movie.filename().."-1.ptl", "w+")
 		 
 		 backup:write(tostring(currentWaypoint.."\n"))
@@ -1796,8 +1921,17 @@ function BranchLoaded(index)
 		 for k,v in pairs(PointsX) do
 			backup:write(tostring(PointsX[k])..";"..tostring(PointsZ[k])..";"..tostring(PointsFrame[k]).."\n")
 		 end
+		 
+		 backup = io.open(movie.filename().."-1.igf", "w+")
+		 
+		 for i = 0, movie.length(), 1 do
+			backup:write(tostring(ignoreFrames[i]).."\n")
+		 end
+		 
+		 
 	end
 	
+	--Remove old waypoint list
 	for k,v in pairs(PointsX) do
 		
 		PointsX[k] = nil
@@ -1806,7 +1940,8 @@ function BranchLoaded(index)
 		totalPoints = totalPoints - 1
 	
 	end
-
+	
+	--Load waypoint list
 	local file = io.open(movie.filename()..tostring(index)..".ptl", "r")
 	
 	if file ~= nil
@@ -1829,7 +1964,39 @@ function BranchLoaded(index)
 		 end
 		 tastudio.setplayback(PointsFrame[currentWaypoint])
 	end
+	
+	--Remove old ignore frames
+	for i = 0, movie.length(), 1 do
+	
+		ignoreFrames[i] = nil
+		
+	end
+	
+	--Load ignore frames
+	file = io.open(movie.filename()..tostring(index)..".igf", "r")
+	
+	if file ~= nil
+	then local k = 0
+		 for i in file:lines(1) do
+			
+			ignoreFrames[k] = tonumber(i)
+			
+			k = k + 1
+		 end
+	end
 
+end
+
+function BranchSaved(index)
+	
+	SaveFiles(index)
+
+end
+
+function BranchLoaded(index)
+	
+	LoadFiles(index)
+	
 end
 
 function BranchRemoved(index)
@@ -1846,15 +2013,7 @@ end
 
 function Exit()
 	
-	local file = io.open(movie.filename().."c.ptl", "w+")
-	
-	file:write(tostring(currentWaypoint.."\n"))
-	
-	for k,v in pairs(PointsX) do
-		file:write(tostring(PointsX[k])..";"..tostring(PointsZ[k])..";"..tostring(PointsFrame[k]).."\n")
-	end
-	
-	file:close()
+	SaveFiles(-2)
 	
 	forms.destroyall()
 	
@@ -1869,6 +2028,7 @@ function FE()
 	done = true
 
 end
+
 if tastudio.engaged()
 then tastudio.ongreenzoneinvalidated(UnGreen)
 	 tastudio.onqueryitembg(TAStudioColor)
@@ -1880,27 +2040,7 @@ then tastudio.ongreenzoneinvalidated(UnGreen)
 	 event.onframeend(FE)
 
 
-	 local file = io.open(movie.filename().."c.ptl", "r")
-	 if file ~= nil
-	 then currentWaypoint = tonumber(file:read("*line"))
-	
-		  for i in file:lines(1) do
-
-			local str = {}
-			str = bizstring.split(i, ";")
-		
-			table.insert(PointsX, totalPoints+1, tonumber(str[1]))
-			table.insert(PointsZ, totalPoints+1, tonumber(str[2]))
-			table.insert(PointsFrame, totalPoints+1, tonumber(str[3]))
-
-			totalPoints = totalPoints + 1
-		  end
-		 file:close()
-		 if PointsFrame[currentWaypoint] == nil
-		 then currentWaypoint = 1
-		 end
-		 tastudio.setplayback(PointsFrame[currentWaypoint])
-	 end
+	 LoadFiles(-2)
 	
 
 
@@ -1920,13 +2060,21 @@ while true do
 	
 	--MarkerControl()
 	
+		if StartFlag and not PauseFlag-- and not done
+	then 	
+	if currentWaypoint < totalPoints
+	then if  autoUnpause
+		 then client.unpause()
+		 end
+	else client.pause()
+	end
+	end
+	
 	if not client.isturbo()
 	then UpdateCanvas()
 	end
 
-	if StartFlag and not PauseFlag-- and not done
-	then --CreateInput()
-	end
+
 	
 	f_old = f;
 	done = true
