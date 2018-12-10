@@ -283,9 +283,10 @@ function ToggleFollow()
 	then follow = "player"
 		 xDrawOffset = 400
 		 yDrawOffset = 400
+		 statusStripItems.toggleFollowItem.image = "ToggleFollowPlayerON.PNG"
 	elseif follow == "player"
 		then follow = "none"
-		
+			 statusStripItems.toggleFollowItem.image = "ToggleFollowPlayerOFF.PNG"
 	end
 	
 end
@@ -294,10 +295,13 @@ function ToggleMapDisplay()
 
 	if drawMap == "yes"
 	then drawMap = "no"
+		 statusStripItems.toggleMapDisplayItem.image = "ViewMapOFF.PNG"
 	elseif drawMap == "no"
 		then drawMap = "auto"
+			 statusStripItems.toggleMapDisplayItem.image = "ViewMapAUTO.PNG"
 		elseif drawMap == "auto"
 			then drawMap = "yes"
+				 statusStripItems.toggleMapDisplayItem.image = "ViewMapON.PNG"
 	end
 
 end
@@ -680,15 +684,15 @@ followPlayer = true
 follow = "none"
 drawMap = "yes"
 
-statusStripItems = {toggleFollowItem = {x = 1, toolTip = "Toggle Follow Player", clickFunction = ToggleFollow, singleclick = true},
-					viewPlayerItem = {x = 21, toolTip = "Reset View to Player", clickFunction = ViewPlayer, singleclick = true}, 
-					viewPreviousWaypointItem = {x = 41, toolTip = "Set View previous Waypoint", clickFunction = ViewPreviousWaypoint, singleclick = true}, 
-					viewCurrentWaypointItem = {x = 61, toolTip = "Set View current Waypoint", clickFunction = ViewCurrentWaypoint, singleclick = true}, 
-					viewNextWaypointItem = {x = 81, toolTip = "Set View next Waypoint", clickFunction = ViewNextWaypoint, singleclick = true}, 
-					zoomInItem = {x = 101, toolTip = "Zoom In", clickFunction = ZoomIn, singleclick = false}, 
-					zoomOutItem = {x = 121, toolTip = "Zoom Out", clickFunction = ZoomOut, singleclick = false}, 
-					resetZoomItem = {x = 141, toolTip = "Reset Zoom", clickFunction = ResetZoom, singleclick = true},
-					toggleMapDisplayItem = {x = 161, toolTip = "Toggle Map Display", clickFunction = ToggleMapDisplay, singleclick = true}
+statusStripItems = {toggleFollowItem = {x = 1, toolTip = "Toggle Follow Player", clickFunction = ToggleFollow, singleclick = true, image = "ToggleFollowPlayerOFF.PNG"},
+					viewPlayerItem = {x = 21, toolTip = "Reset View to Player", clickFunction = ViewPlayer, singleclick = true, image = "ResetViewToPlayer.PNG"}, 
+					viewPreviousWaypointItem = {x = 41, toolTip = "Set View previous Waypoint", clickFunction = ViewPreviousWaypoint, singleclick = true, image = "SetViewToPreviousWaypoint.PNG"}, 
+					viewCurrentWaypointItem = {x = 61, toolTip = "Set View current Waypoint", clickFunction = ViewCurrentWaypoint, singleclick = true, image = "SetViewToCurrentWaypoint.PNG"}, 
+					viewNextWaypointItem = {x = 81, toolTip = "Set View next Waypoint", clickFunction = ViewNextWaypoint, singleclick = true, image = "SetViewToNextWaypoint.PNG"}, 
+					zoomInItem = {x = 101, toolTip = "Zoom In", clickFunction = ZoomIn, singleclick = false, image = "ZoomIn.PNG"}, 
+					zoomOutItem = {x = 121, toolTip = "Zoom Out", clickFunction = ZoomOut, singleclick = false, image = "ZoomOut.PNG"}, 
+					resetZoomItem = {x = 141, toolTip = "Reset Zoom", clickFunction = ResetZoom, singleclick = true, image = "ResetZoom.PNG"},
+					toggleMapDisplayItem = {x = 161, toolTip = "Toggle Map Display", clickFunction = ToggleMapDisplay, singleclick = true, image = "ViewMapON.PNG"}
 				   }
 
 rightClickItems = {editMode = {mouseOverPoint = {setPosition = {y = 0, text = "Set new position", clickFunction = nil}, 
@@ -1563,7 +1567,7 @@ function DrawWaypoints()
 						   end
 					  end
 					  if mouseButt["Right"]
-					  then DeleteWayPoint(k)
+					  then --DeleteWayPoint(k)
 					  elseif mouseButt["Middle"] and k > 0 and k < totalPoints and not wasMouseButtM
 					  then SplitPath(k)   
 					  end
@@ -1662,7 +1666,7 @@ end
 --Handles mouse events on the canvas
 function CanvasMouse(mouseOverObject, mouseOverPoint)
 
-if mouseX >= 0 and mouseX <= 800 and mouseY >= 0 and mouseY <= 800
+	if mouseX >= 0 and mouseX <= 800 and mouseY >= 0 and mouseY <= 800
 	then if mouseButt["Left"] and not wasMouseButtL and not selected and CanvasMode == "edit" and not fireRCM-- adding a new waypoint
 		 then AppendWayPoint(mouseX, mouseY)
 			  if PointsFrame[totalPoints-1] ~= nil
@@ -1699,17 +1703,13 @@ if mouseX >= 0 and mouseX <= 800 and mouseY >= 0 and mouseY <= 800
 		 end
 		 		
 		if not mouseButt["Right"]
-		then --for k,v in pairs(rightClickItems.editMode.notHover) do
-				
-				--Canvas.DrawText(mouseX, mouseY+16*k, rightClickItems.editMode.notHover[k].Text)
-				mouseMoved = false
-			 -- end
+		then mouseMoved = false
 			 if fireRCM
 			 then if CanvasMode == "edit"
 				  then if mouseOverObject
 					   then RightClickMenu(rightClickItems.editMode.mouseOverObject)
 					   elseif mouseOverPoint
-						   then fireRCM = false
+						   then RightClickMenu(rightClickItems.editMode.mouseOverPoint)
 					   elseif not mouseOverObject and not mouseOverPoint and not mouseOverLine --Canvas.DrawRectangle(x, y, RCListWidth, 15*table.getn(rightClickItems.editMode.notOverPoint), 0xFF666666, 0xFF666666)
 						   then RightClickMenu(rightClickItems.editMode.notOverPoint)		
 					   elseif mouseOverLine
@@ -1740,13 +1740,16 @@ function StatusStrip()
 		
 		if mouseX > x and mouseX < x+15 and mouseY > y and mouseY < y+15
 		then Canvas.DrawRectangle(x, y, 17, 17, 0xFFBBBBBB, 0xFFAAAAAA)
-			 Canvas.DrawText(x+8, y-18, statusStripItems[k].toolTip)
+			 Canvas.DrawImage(statusStripItems[k].image, x+2, y+2)
+			 Canvas.DrawText(x+8, y-18, statusStripItems[k].toolTip, 0xFF000000, 0xFFFFFFFF)
+			 
 			 
 			 if mouseButt["Left"] and (not statusStripItems[k].singleclick or not wasMouseButtL)
 			 then statusStripItems[k].clickFunction()
 			 end
 		
 		else Canvas.DrawRectangle(x, y, 17, 17, 0xFFBBBBBB, 0xFFDDDDDD)
+			 Canvas.DrawImage(statusStripItems[k].image, x+2, y+2)
 		end
 
 	end
