@@ -260,14 +260,41 @@ function ToggleCanvasEdit()
 end
 
 function ZoomIn()
-
+	
+	if not zooming
+	then local vx = xFollow+(mouseX-xDrawOffset)/Zoom
+		 local vy = yFollow+(mouseY-yDrawOffset)/Zoom
+		 
+		 --xDrawOffset = -(vx-xFollow)*Zoom + mouseX
+		 --yDrawOffset = -(vy-yFollow)*Zoom + mouseY
+		 
+		 --xFollow = vx - (mouseX-xDrawOffset)/Zoom
+		 --yFollow = vy - (mouseY-yDrawOffset)/Zoom
+		 --print("ASDFSADF")
+		-- zooming = true
+	end
+	
 	Zoom = Zoom*1.05
+	--xDrawOffset = mouseX
+	--yDrawOffset = mouseY
+	
+	
+	
 	
 end
 
 function ZoomOut()
 
+	if not zooming
+	then --xFollow = (mouseX-xDrawOffset)/Zoom
+		 --yFollow = (mouseY-yDrawOffset)/Zoom
+		 zooming = true
+	end
+	
 	Zoom = Zoom*0.95
+	--xDrawOffset =  mouseX
+	--yDrawOffset = mouseY
+	
 	
 end
 
@@ -286,6 +313,8 @@ function ToggleFollow()
 		 statusStripItems.toggleFollowItem.image = "ToggleFollowPlayerON.PNG"
 	elseif follow == "player"
 		then follow = "none"
+			 xFollow = 0
+			 yFollow = 0
 			 statusStripItems.toggleFollowItem.image = "ToggleFollowPlayerOFF.PNG"
 	end
 	
@@ -334,7 +363,7 @@ end
 function CancelAppendingWaypoint()
 
 	appendWayPointFormActive = false
-	forms.destroy(EWform)
+	forms.destroy(AWform)
 
 end
 
@@ -347,33 +376,86 @@ function OkAppendingWaypoint()
 		 totalPoints = totalPoints + 1
 	end
 	
-	table.insert(PointsX, totalPoints+1, tonumber(forms.gettext(xTxt)))
-	table.insert(PointsZ, totalPoints+1, tonumber(forms.gettext(zTxt)))
+	table.insert(PointsX, totalPoints+1, tonumber(forms.gettext(AWxTxt)))
+	table.insert(PointsZ, totalPoints+1, tonumber(forms.gettext(AWzTxt)))
 	table.insert(PointsFrame, totalPoints+1, nil)
 			  
 	totalPoints = totalPoints + 1
 	
 	appendWayPointFormActive = false
+	forms.destroy(AWform)
+
+end
+
+function AppendWaypointForm()
+	
+	if not appendWayPointFormActive 
+	then appendWayPointFormActive = true
+		 AWform = forms.newform(175, 130, "Add Waypoint", CancelAppendingWaypoint)
+		 local x = 0
+		 local z = 0
+		
+		 forms.label(AWform, "x =", 5, 10, 25, 20)
+		 AWxTxt = forms.textbox(AWform, tostring(x), 120, 23, nil, 30, 5)
+		 forms.label(AWform, "z =", 5, 35, 25, 20)
+		 AWzTxt = forms.textbox(AWform, tostring(z), 120, 23, nil, 30, 30)
+		
+		 forms.button(AWform, "Cancel", CancelAppendingWaypoint,5, 60)
+		 forms.button(AWform, "OK", OkAppendingWaypoint, 80, 60)
+	end
+end
+
+function CancelEditingWaypoint()
+
+	setWaypointFormActive = false
 	forms.destroy(EWform)
 
 end
 
-function AppendWaypointForm(index)
+function OkEditingWaypoint()
+
+	PointsX[editPt] = tonumber(forms.gettext(EWxTxt))
+	PointsZ[editPt] = tonumber(forms.gettext(EWzTxt))
 	
-	if not appendWayPointFormActive 
-	then appendWayPointFormActive = true
-		 EWform = forms.newform(175, 130, "Add Waypoint", CancelAppendingWaypoint)
-		 local x = 0
-		 local z = 0
-		
-		 forms.label(EWform, "x =", 5, 10, 25, 20)
-		 xTxt = forms.textbox(EWform, tostring(x), 120, 23, nil, 30, 5)
-		 forms.label(EWform, "z =", 5, 35, 25, 20)
-		 zTxt = forms.textbox(EWform, tostring(z), 120, 23, nil, 30, 30)
-		
-		 forms.button(EWform, "Cancel", CancelAppendingWaypoint,5, 60)
-		 forms.button(EWform, "OK", OkAppendingWaypoint, 80, 60)
+	for i = editPt, totalPoints, 1 do
+		PointsFrame[i] = nil
 	end
+
+	setWaypointFormActive = false
+	forms.destroy(EWform)
+
+end
+
+function EditWaypointForm()
+
+	if not setWaypointFormActive and selectedPoint > 1
+	then setWaypointFormActive = true
+		 EWform = forms.newform(175, 130, "Edit Waypoint")
+		 
+		 editPt = selectedPoint
+		 
+		 forms.label(EWform, "x =", 5, 10, 25, 20)
+		 EWxTxt = forms.textbox(EWform, tostring(PointsX[selectedPoint]), 120, 23, nil, 30, 5)
+		 forms.label(EWform, "z =", 5, 35, 25, 20)
+		 EWzTxt = forms.textbox(EWform, tostring(PointsZ[selectedPoint]), 120, 23, nil, 30, 30)
+		
+		 forms.button(EWform, "Cancel", CancelEditingWaypoint,5, 60)
+		 forms.button(EWform, "OK", OkEditingWaypoint, 80, 60)
+		 
+	end
+
+end
+
+function SplitPathRCM()
+
+	SplitPath(selectedPoint)
+
+end
+
+function DeleteWaypointRCM()
+
+	DeleteWayPoint(selectedPoint)
+
 end
 
 function DeleteAllWaypoints()
@@ -384,9 +466,13 @@ end
 
 function OkInsertingButton()
 	
-	table.insert(IndexToInsert, tonumber(forms.gettext(IndexText)))
-	table.insert(LambdaToInsert, tonumber(forms.gettext(LambdaText)))
+	--table.insert(IndexToInsert, tonumber(forms.gettext(IndexText)))
+	--table.insert(LambdaToInsert, tonumber(forms.gettext(LambdaText)))
+	table.insert(IndexToInsert, tonumber(forms.gettext(LineLabel)))
+	table.insert(LambdaToInsert, tonumber(forms.gettext(LambdaLabel)))
 	table.insert(ButtonToInsert, tostring(forms.gettext(ButtonText)))
+	table.insert(AmountToInsert, tonumber(forms.gettext(AmountText)))
+	table.insert(InsertionFrame, nil)
 	
 	insertButtonFormActive = false
 	forms.destroy(IBForm)
@@ -400,21 +486,35 @@ function CancelInsertingButton()
 
 end
 
-function InsertButtonF()
-
+function InsertButtonForm()
+	
 	if not insertButtonFormActive
 	then insertButtonFormActive = true
-		 IBForm = forms.newform(100, 200, "Insert Button")
-		
-		 IndexText = forms.textbox(IBForm, "index", 50, 20, nil, 5, 5)
-		 LambdaText = forms.textbox(IBForm, "lambda", 50, 20, nil, 5, 35)
-		
-		 ButtonText = forms.textbox(IBForm, "button",50, 20, nil, 5, 65)
-		
-		 forms.button(IBForm, "OK", OkInsertingButton, 5, 90)
-		 forms.button(IBForm, "Cancel", CancelInsertingButton, 5, 130)
+		 IBForm = forms.newform(180, 170, "Insert Button", CancelInsertingButton)
+		 
+		 forms.label(IBForm, "Line:", 5, 5, 40, 20)
+		 LineLabel = forms.label(IBForm, tostring(selectedLine), 45, 5, 100, 20)
+		 
+		 forms.label(IBForm, "lambda:", 5, 30 , 40, 20)
+		 LambdaLabel = forms.label(IBForm, tostring(lambdaOnLine), 45, 30, 100, 20)
+		 
+		 forms.label(IBForm, "Button:", 5, 55, 41, 20) 
+		 ButtonText = forms.textbox(IBForm, "", 50, 20, nil, 52, 50)
+		 
+		 forms.label(IBForm, "Amount:", 5, 80, 46, 20)
+		 AmountText =  forms.textbox(IBForm, "", 50, 20, nil, 52, 75)
+		 
+		 forms.button(IBForm, "OK", OkInsertingButton, 5, 100)
+		 forms.button(IBForm, "Cancel", CancelInsertingButton, 80, 100)
 	end
 	
+end
+
+
+
+function testfunc()
+	xFollow = -900
+	yFollow = 1800
 end
 
 -- This function creates the main window.
@@ -464,7 +564,7 @@ function WindowForm()
 	
 	autoUnpauseCheck = forms.checkbox(Window, "Auto Unpause:", 10, 300)
 	
-	InsertButton = forms.button(Window, "Insert Button",InsertButtonF, 5, 330)
+	forms.button(Window, "test",testfunc, 5, 330)
 	
 	
 
@@ -659,16 +759,22 @@ Canvas = gui.createcanvas(800,820)
 
 xDrawOffset = 400
 yDrawOffset = 400
+xFollow = 0
+yFollow = 0
+zooming = false
 
 CPoints = {X, Z} --TODO
 PointsX = {}
 PointsZ = {}
 PointsFrame = {}
 
---TODO: Make better table, use T[waypointindex][number] = {lambda, button}
+--TODO: Make better table, use T[waypointindex][number] = {lambda, button,...}
+
 IndexToInsert = {}
 LambdaToInsert = {}
 ButtonToInsert = {}
+AmountToInsert = {}
+InsertionFrame = {}
 
 totalPoints = 0
 selected = false
@@ -684,6 +790,9 @@ followPlayer = true
 follow = "none"
 drawMap = "yes"
 
+selectedLine = nil
+selectedPoint = nil
+
 statusStripItems = {toggleFollowItem = {x = 1, toolTip = "Toggle Follow Player", clickFunction = ToggleFollow, singleclick = true, image = "ToggleFollowPlayerOFF.PNG"},
 					viewPlayerItem = {x = 21, toolTip = "Reset View to Player", clickFunction = ViewPlayer, singleclick = true, image = "ResetViewToPlayer.PNG"}, 
 					viewPreviousWaypointItem = {x = 41, toolTip = "Set View previous Waypoint", clickFunction = ViewPreviousWaypoint, singleclick = true, image = "SetViewToPreviousWaypoint.PNG"}, 
@@ -695,14 +804,14 @@ statusStripItems = {toggleFollowItem = {x = 1, toolTip = "Toggle Follow Player",
 					toggleMapDisplayItem = {x = 161, toolTip = "Toggle Map Display", clickFunction = ToggleMapDisplay, singleclick = true, image = "ViewMapON.PNG"}
 				   }
 
-rightClickItems = {editMode = {mouseOverPoint = {setPosition = {y = 0, text = "Set new position", clickFunction = nil}, 
-												 splitPath = {y = 15, text = "Split Path", clickFunction = SplitPath},
-												 deleteWaypoint = {y = 30, text = "Delete waypoint", clickFunction = nil}
+rightClickItems = {editMode = {mouseOverPoint = {setPosition = {y = 0, text = "Set new position", clickFunction = EditWaypointForm}, 
+												 splitPath = {y = 15, text = "Split Path", clickFunction = SplitPathRCM},
+												 deleteWaypoint = {y = 30, text = "Delete waypoint", clickFunction = DeleteWaypointRCM}
 												},
 							   notOverPoint = {addWaypoint = {y = 0, text = "Add new waypoint", clickFunction = AppendWaypointForm},
 											   deleteAllWaypoints = {y = 15, text = "Delete all waypoints", clickFunction = DeleteAllWaypoints}
 											  },
-							   mouseOverLine = {insertButton = {y = 0, text = "Insert button", clickFunction = nil}
+							   mouseOverLine = {insertButton = {y = 0, text = "Insert button", clickFunction = InsertButtonForm}
 											   },
 							   mouseOverObject = {goToObject = {y = 0, text = "Go to object", clickFunction = nil}
 												 }
@@ -721,11 +830,9 @@ X = 0; Y = 0
 FollowAngle = 0
 InputAngle = 0
 Radius = 0
-steps = 0
-done = false
+
 f=0
 f_old=0
-frameEdit = 0
 ug = 0
 autoUnpause = false
 
@@ -733,6 +840,7 @@ firstStep = true
 
 appendWayPointFormActive = false
 insertButtonFormActive = false
+setWaypointFormActive = false
 
 tastudio.clearinputchanges()
 
@@ -874,7 +982,7 @@ function RotateAround(radius)
 	local x = Xbest
 	local y = Ybest
 	
-	Steps = 0
+	local Steps = 0
 	j = 0
 	bestdiff = 9999999999
 	InputAngleInt = math.atan2(y, x) --console.writeline(InputAngle.." "..InputAngleInt);
@@ -1049,23 +1157,24 @@ function CreateInput()
 			 if emu.framecount() >= ug
 			 then if emu.islagged()
 				 then tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", Point.X)
-					 tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", Point.Y)
-					 for k,v in pairs(IndexToInsert) do
-			
-			 if IndexToInsert[k] == currentWaypoint
-			 then if (lambdax >= LambdaToInsert[k]-0.05 and lambdax <= LambdaToInsert[k]+0.05) and (lambdaz >= LambdaToInsert[k]-0.05 and lambdaz <= LambdaToInsert[k]+0.05)
-				  then tastudio.submitinputchange(emu.framecount(), ButtonToInsert[k], true)
-						--tastudio.applyinputchanges()
-						--TODO:smarter button setting
-						table.remove(IndexToInsert, k)
-						table.remove(LambdaToInsert, k)
-						table.remove(ButtonToInsert, k)
-				  end
+					  tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", Point.Y)
+					 
+					 --Button Insertion
+					  for k,v in pairs(IndexToInsert) do
+							--print("JKLLJJ")
+						  if IndexToInsert[k] == currentWaypoint
+						  then if (lambdax >= LambdaToInsert[k] and lambdaz >= LambdaToInsert[k] and InsertionFrame[k] == nil)
+							   then for i = 1, AmountToInsert[k], 1 do
+									tastudio.submitinputchange(emu.framecount()+(i-1), ButtonToInsert[k], true)
+									--print("ASDFDSAFSDF")
+									end
+									InsertionFrame[k] = emu.framecount()
+							   end
 				  
-			 end
-		 end
+						  end
+					  end
 				 else tastudio.submitanalogchange(emu.framecount(), "P1 X Axis", 0)
-					 tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", 0)
+					  tastudio.submitanalogchange(emu.framecount(), "P1 Y Axis", 0)
 				 end
 				 
 			 end
@@ -1150,6 +1259,20 @@ function CreateInput()
 	
 end
 
+function DeleteButtons(index)
+
+	for k,v in pairs(IndexToInsert) do
+		if IndexToInsert[k] >= index - 1 and InsertionFrame[k] ~= nil
+		then for i = 1, AmountToInsert[k], 1 do
+				tastudio.submitinputchange(InsertionFrame[k]+(i-1), ButtonToInsert[k], false)
+			 end
+			 tastudio.applyinputchanges()
+			 InsertionFrame[k] = nil
+		end
+	 end
+
+end
+
 ------------------------------
 --Waypoint Editing Functions--
 ------------------------------
@@ -1178,13 +1301,15 @@ function DeleteWayPoint(index)
 	then if currentWaypoint > index-1
 		 then tastudio.setplayback(PointsFrame[index-1])
 			  currentWaypoint = index-1
-			  ug = PointsFrame[index-1]
+			  ug = PointsFrame[index-1]		  
 		 end
 	elseif currentWaypoint > index-1
 		then tastudio.setplayback(PointsFrame[1])
 			 currentWaypoint = 1
 			 ug = PointsFrame[1]
-		end
+	end
+	
+	
 	
 	if index == 1
 	then for i = totalPoints, 1, -1 do
@@ -1209,7 +1334,12 @@ function DeleteWayPoint(index)
 			 table.remove(PointsFrame, index)
 			 totalPoints = totalPoints - 1
 	end
-
+	
+	for i = index, totalPoints, 1 do 
+			PointsFrame[i] = nil
+	end
+	--TODO: readjust button insertion
+	DeleteButtons(index)
 end
 
 --Splits the path between two waypoints in the middle. A new waypoint is added.
@@ -1219,6 +1349,8 @@ function SplitPath(index)
 	table.insert(PointsZ, index+1, (PointsZ[index]+(PointsZ[index+1]-PointsZ[index])/2))
 	table.insert(PointsFrame, index+1, nil)
 	totalPoints = totalPoints + 1
+	
+
 	
 	if PointsFrame[index] ~= nil
 	then if currentWaypoint > index
@@ -1231,7 +1363,13 @@ function SplitPath(index)
 			 currentWaypoint = 1
 			 ug = PointsFrame[1]
 	end
-
+	
+	for i = index, totalPoints, 1 do 
+		PointsFrame[i] = nil
+	end
+	
+	--TODO: Readjust button insertion
+	DeleteButtons(index)
 end
 
 ----------------------------
@@ -1482,16 +1620,19 @@ end
 --Draws the waypoints on the canvas and handles editing them. Return value is the selected waypoint.
 function DrawWaypoints()
 	
-	mouseOverLine = false
-	Pselection = {}
+	if not fireRCM
+	then mouseOverLine = false
+		 selectedLine = nil
+		 lambdaOnLine = nil
+		 
+		 mouseOverPoint = false
+		 selectedPoint = nil
+	end
+	selected = false
+	
 	
 		for k,v in pairs(PointsX) do
 	
-		--print(tostring(k).." "..tostring(v))
-		
-		--print("x "..tostring(PointsX[k]))
-		--print("y "..tostring(PointsZ[k]))
-		--print(k)
 		if PointsX[k] ~= nil and PointsZ[k] ~= nil
 		then local x = (xDrawOffset-(xFollow-PointsX[k])*Zoom)
 			 local z = (yDrawOffset-(yFollow-PointsZ[k])*Zoom)
@@ -1504,33 +1645,38 @@ function DrawWaypoints()
 			-- Canvas.DrawText(0, 16+16*k, ""..tostring(PointsX[k]).." , "..tostring(PointsZ[k]))
 			
 			if k > 1
-			then DrawArrow((xDrawOffset-(xFollow-PointsX[k-1])*Zoom), (yDrawOffset-(yFollow-PointsZ[k-1])*Zoom), x, z, 0xFF000000)
-				 
-				 local x_ = (xDrawOffset-(xFollow-PointsX[k-1])*Zoom)
+			then local x_ = (xDrawOffset-(xFollow-PointsX[k-1])*Zoom)
 				 local z_ = (yDrawOffset-(yFollow-PointsZ[k-1])*Zoom)
-				 
-				-- local p_x = x_+((mouseX-x_)*(x-x_)+(mouseY-z_)*(z-z_)/(x-x_)*(x-x_)+(z-z_)*(z-z_))*(x-x_)
-				--local p_z = z_+((mouseX-x_)*(x-x_)+(mouseY-z_)*(z-z_)/(x-x_)*(x-x_)+(z-z_)*(z-z_))*(z-z_)
-				 
-				 local l = -(((x_-mouseX)*(x-x_)+(z_-mouseY)*(z-z_))/((x-x_)^2+(z-z_)^2))
+			
+				 DrawArrow(x_, z_, x, z, 0xFF000000)
+
+				 l = -(((x_-mouseX)*(x-x_)+(z_-mouseY)*(z-z_))/((x-x_)^2+(z-z_)^2))
 				 
 				 local p_x = x_ + l*(x-x_)
 				 local p_z = z_ + l*(z-z_)
 				 
-				 if math.sqrt((p_x-mouseX)^2+(p_z-mouseY)^2) < 5 and l < 1 and l > 0
-				 then Canvas.DrawAxis(p_x, p_z, 10, 0xFFFF0000)
-					  
+				 if math.sqrt((p_x-mouseX)^2+(p_z-mouseY)^2) < 3 and l < 1 and l > 0 and not mouseOverLine and not mouseOverPoint
+				 then Canvas.DrawAxis(p_x, p_z, 10, 0xFFFF0000)	
+					  DrawArrow(x_, z_, x, z, 0xFFFF00FF)
 					  mouseOverLine = true
-				 
+					  selectedLine = k - 1 
+					  lambdaOnLine = l
+				 elseif not mouseOverLine
+					 then mouseOverLine = false
+						  selectedLine = nil
+						  lambdaOnLine = nil
 				 end
-				-- Canvas.DrawText(0,500, p_x.."\n"..p_z)
+				Canvas.DrawText(0,500+14*k, tostring(mouseOverLine)..", "..tostring(selectedLine)..", "..tostring(lambdaOnLine))
 			end
 			
 			
 			
-			if math.sqrt((x-mouseX)^2+(z-mouseY)^2) < 5
-			then --selected = true
-				 Pselection[k] = true
+			if math.sqrt((x-mouseX)^2+(z-mouseY)^2) < 5 and not mouseOverPoint and not mouseOverLine
+			then selected = true
+				 Canvas.DrawText(0, 500, "ASSDAFSDF")
+				 mouseOverPoint = true
+				 selectedPoint = k
+				 
 				 local angle = 0
 				 if PointsX[k-1] ~= nil 
 				 then angle = math.atan2(-(PointsZ[k]-PointsZ[k-1]),(PointsX[k]-PointsX[k-1])) * (180/math.pi)
@@ -1544,11 +1690,9 @@ function DrawWaypoints()
 				 end
 				 
 				 if CanvasMode == "edit"
-				 then if mouseButt["Left"] and k > 1
-					  then ind = k
-						   selected = true
-						   PointsXCopy = PointsX[ind]
-						   PointsZCopy = PointsZ[ind]
+				 then if mouseButt["Left"] and k > 1 and clickedPoint == nil
+					  then clickedPoint = selectedPoint
+							
 						   if PointsFrame[k-1] ~= nil
 						   then if currentWaypoint > k-2
 								then tastudio.setplayback(PointsFrame[k-1])
@@ -1561,16 +1705,21 @@ function DrawWaypoints()
 									ug = PointsFrame[1]
 						   end
 						   client.pause()
-					  else ind = nil
-						   if autoUnpause --and selected
-						   then --client.unpause()
-						   end
+					  elseif not mouseButt["Left"] 
+						  then clickedPoint = nil
+								if autoUnpause --and selected
+								then --client.unpause()
+								end
 					  end
+					  
+					  
 					  if mouseButt["Right"]
 					  then --DeleteWayPoint(k)
 					  elseif mouseButt["Middle"] and k > 0 and k < totalPoints and not wasMouseButtM
 					  then SplitPath(k)   
 					  end
+					  
+					  
 				 elseif CanvasMode == "view"
 					 then if mouseButt["Left"]
 						  then if PointsFrame[k] ~= nil
@@ -1580,51 +1729,45 @@ function DrawWaypoints()
 						  end
 					  
 				 end
-			else --selected = false
-				Pselection[k] = false
-			end
+			elseif not mouseOverPoint 
+				then mouseOverPoint = false
+					 selectedPoint = nil
+			else
 
+			end
+		--Canvas.DrawText(500, 100+14*k, tostring(mouseOverPoint)..", "..tostring(selectedPoint))
 			--Canvas.DrawText(x, z+36, tostring(Pselection[k]).."\n"..tostring(ind))
+			Canvas.DrawText(500, 300+14*k, tostring(clickedPoint))
 		end
 		
 		
 		
 	end
-	selected = false
-	for k,v in pairs(PointsX) do
-		if Pselection[k]
-		then selected = true
-		end
-	end 
+
+	Canvas.DrawText(500, 100+14, tostring(mouseOverPoint)..", "..tostring(selectedPoint)..", "..tostring(clickedPoint))
+	--moving the selected point
+	if clickedPoint ~= nil --and not mouseButt["Right"]-- and Pselection[ind]
+	then 
 	
-	
-	if ind ~= nil --and not mouseButt["Right"]-- and Pselection[ind]
-	then dmx = mouseX - oldMouseX
-		dmy = mouseY - oldMouseY
-		PointsX[ind] = PointsX[ind] + dmx/Zoom --TODO: Left+Right mouse click bug
-		PointsZ[ind] = PointsZ[ind] + dmy/Zoom
-		--if PointsX[ind] ~= PointsXCopy or PointsZ[ind] ~= PointsYCopy
-		--then print("changed "..tostring(ind)..", set "..tostring(ind-3).."as new frame")
-		   --  pointsChanged = true
-			-- if earliestChange == nil or earliestChange > ind
-			-- then earliestChange = ind
-			--		indCopy = ind
-			 --end
-			 
-		--end
-		selected = true
-		client.pause()
-	else --selected = false
-	
-		--if not mouseButt["Left"] and pointsChanged and indCopy ~= nil
-		--then tastudio.setplayback(PointsFrame[indCopy]); print("RESET FRAME")
-			--pointsChanged = false
-		--end
-	
+		 local dmx = mouseX - oldMouseX
+		 local dmy = mouseY - oldMouseY
+		 
+		 PointsX[clickedPoint] = PointsX[clickedPoint] + dmx/Zoom --TODO: Left+Right mouse click bug
+		 PointsZ[clickedPoint] = PointsZ[clickedPoint] + dmy/Zoom
+		 
+		 if math.abs(dmx) > 0 or math.abs(dmx) > 0 --TODO:Only run this once
+		 then for i = clickedPoint, totalPoints, 1 do
+					PointsFrame[i] = nil
+			  end
+			  
+			  --deleting button presses
+			  DeleteButtons(clickedPoint)
+			  
+		 end
+		 selected = true
+		 client.pause()
+	else selected = false
 	end
-	---print(tostring(PointsFrame[1]))
-	--Canvas.DrawText(0,32, tostring(selected))
-	--Canvas.DrawText(0,48, tostring(totalPoints))
 
 	return selected
 	
@@ -1667,7 +1810,7 @@ end
 function CanvasMouse(mouseOverObject, mouseOverPoint)
 
 	if mouseX >= 0 and mouseX <= 800 and mouseY >= 0 and mouseY <= 800
-	then if mouseButt["Left"] and not wasMouseButtL and not selected and CanvasMode == "edit" and not fireRCM-- adding a new waypoint
+	then if mouseButt["Left"] and not wasMouseButtL and clickedPoint == nil and CanvasMode == "edit" and not fireRCM-- adding a new waypoint
 		 then AppendWayPoint(mouseX, mouseY)
 			  if PointsFrame[totalPoints-1] ~= nil
 			  then if emu.framecount() > PointsFrame[totalPoints-1]
@@ -1680,14 +1823,19 @@ function CanvasMouse(mouseOverObject, mouseOverPoint)
 						--ug = PointsFrame[1]
 						
 			  end
-		 elseif mouseButt["Left"]
+		 elseif mouseButt["Left"] and CanvasMode == "view"
 		 then --fireRCM = false
+				--xFollow = (mouseX-xDrawOffset)--/Zoom
+				--yFollow = (mouseY-yDrawOffset)--/Zoom
 		 elseif mouseButt["Right"] -- dragging the canvas
-		 then dmx = mouseX - oldMouseX
-			  dmy = mouseY - oldMouseY
+		 then local dmx = mouseX - oldMouseX
+			  local dmy = mouseY - oldMouseY
 			  
 			  xDrawOffset = xDrawOffset + dmx--/Zoom
 			  yDrawOffset = yDrawOffset + dmy--/Zoom+
+			  
+			 -- xFollow = (mouseX-xDrawOffset)/Zoom
+			--  yFollow = (mouseY-yDrawOffset)/Zoom
 			  
 			  if dmx == 0 and dmy == 0 and not mouseMoved
 			  then fireRCM = true
@@ -1700,6 +1848,8 @@ function CanvasMouse(mouseOverObject, mouseOverPoint)
 		 then ZoomIn()
 		 elseif mouseButt["XButton2"]
 		 then ZoomOut()
+		 elseif not mouseButt["XButton1"] and not mouseButt["XButton2"]
+			 then zooming = false
 		 end
 		 		
 		if not mouseButt["Right"]
@@ -1707,14 +1857,15 @@ function CanvasMouse(mouseOverObject, mouseOverPoint)
 			 if fireRCM
 			 then if CanvasMode == "edit"
 				  then if mouseOverObject
-					   then RightClickMenu(rightClickItems.editMode.mouseOverObject)
-					   elseif mouseOverPoint
-						   then RightClickMenu(rightClickItems.editMode.mouseOverPoint)
-					   elseif not mouseOverObject and not mouseOverPoint and not mouseOverLine --Canvas.DrawRectangle(x, y, RCListWidth, 15*table.getn(rightClickItems.editMode.notOverPoint), 0xFF666666, 0xFF666666)
-						   then RightClickMenu(rightClickItems.editMode.notOverPoint)		
-					   elseif mouseOverLine
+					   then RightClickMenu(rightClickItems.editMode.mouseOverObject)		
+					   elseif mouseOverLine and not mouseOverPoint
 						   then RightClickMenu(rightClickItems.editMode.mouseOverLine)
+					   elseif selectedPoint ~= nil and not mouseOverLine
+						   then RightClickMenu(rightClickItems.editMode.mouseOverPoint)
+					   else RightClickMenu(rightClickItems.editMode.notOverPoint)
 					   end
+					   
+					   --if selectedPoint ~=nil then RightClickMenu(rightClickItems.editMode.mouseOverPoint) end
 				  end
 				  
 			 end
@@ -1722,10 +1873,10 @@ function CanvasMouse(mouseOverObject, mouseOverPoint)
 				
 		 --print(tostring(mouseButt[Wheel]))
 		 Canvas.DrawText(0,0, " "..xFollow+(mouseX-xDrawOffset)/Zoom.."\n"..yFollow+(mouseY-yDrawOffset)/Zoom.."\n"..Zoom)
-		
+		 
 	else fireRCM = false
 	end
-
+	Canvas.DrawText(0, 700, tostring(fireRCM))
 end
 
 --Draws the status-strip items and handles their functions.
@@ -1768,8 +1919,8 @@ function UpdateCanvas()
 	--TODO:fix Zooming
 	
 	if follow == "none"
-	then xFollow = 0
-		 yFollow = 0
+	then --xFollow = 0
+		 --yFollow = 0
 	elseif follow == "player"
 		then xFollow = player.position.x
 			 yFollow = player.position.z
@@ -1808,7 +1959,9 @@ function UpdateCanvas()
 		 -- end
 
 	local waypoint = DrawWaypoints()
-	Canvas.DrawText(0, 64, tostring(xDrawOffset)..";"..tostring(yDrawOffset).."\n"..tostring(currentWaypoint)..","..tostring(waypoint))
+	
+	
+	Canvas.DrawText(0, 64, "draw:"..tostring(xDrawOffset)..";"..tostring(yDrawOffset).."\nmouse:"..tostring(mouseX)..","..tostring(mouseY).."\nfollow:"..tostring(xFollow)..","..tostring(yFollow))
 	
 	if player.collision.radius == nil
 	then DrawPlayer(xDrawOffset, yDrawOffset, 10)
@@ -1818,7 +1971,7 @@ function UpdateCanvas()
 	StatusStrip()
 		
 	CanvasMouse(object[1], waypoint)
-	
+	Canvas.DrawText(0, 140, tostring(mouseOverPoint)..", "..tostring(mouseOverLine))
 	
 	wasMouseButtL = mouseButt["Left"]
 	wasMouseButtR = mouseButt["Right"]
@@ -1911,6 +2064,16 @@ function SaveFiles(index)
 		file:write(tostring(ignoreFrames[i]).."\n")
 	end
 	
+	--Save button list
+	file = io.open(movie.filename()..tostring(index)..".btl", "w+")
+	for k,v in pairs(IndexToInsert) do
+		file:write(tostring(IndexToInsert)..";"..
+					tostring(LambdaToInsert)..";"..
+					tostring(ButtonToInsert)..";"..
+					tostring(AmountToInsert)..";"..
+					tostring(InsertionFrame).."\n")
+	end
+
 end
 
 function LoadFiles(index)
@@ -1919,19 +2082,24 @@ function LoadFiles(index)
 	if index > -1
 	then local backup = io.open(movie.filename().."-1.ptl", "w+")
 		 
-		 backup:write(tostring(currentWaypoint.."\n"))
-	
+		 backup:write(tostring(currentWaypoint.."\n"))	
 		 for k,v in pairs(PointsX) do
 			backup:write(tostring(PointsX[k])..";"..tostring(PointsZ[k])..";"..tostring(PointsFrame[k]).."\n")
 		 end
 		 
-		 backup = io.open(movie.filename().."-1.igf", "w+")
-		 
+		 backup = io.open(movie.filename().."-1.igf", "w+") 
 		 for i = 0, movie.length(), 1 do
 			backup:write(tostring(ignoreFrames[i]).."\n")
 		 end
 		 
-		 
+		 backup = io.open(movie.filename().."-1.btl", "w+")
+		 for k,v in pairs(IndexToInsert) do
+			backup:write(tostring(IndexToInsert)..";"..
+						tostring(LambdaToInsert)..";"..
+						tostring(ButtonToInsert)..";"..
+						tostring(AmountToInsert)..";"..
+						tostring(InsertionFrame).."\n")
+		 end
 	end
 	
 	--Remove old waypoint list
@@ -1985,6 +2153,32 @@ function LoadFiles(index)
 			ignoreFrames[k] = tonumber(i)
 			
 			k = k + 1
+		 end
+	end
+	
+	--Remove old button list
+	for k,v in pairs(IndexToInsert) do
+		IndexToInsert[k] = nil
+		LambdaToInsert[k] = nil
+		ButtonToInsert[k] = nil
+		AmountToInsert[k] = nil
+		InsertionFrame[k] = nil
+	end
+	
+	--Load button list
+	file = io.open(movie.filename()..tostring(index)..".btl", "r")
+	
+	if file ~= nil
+	then for i in file:lines(1) do
+			local str = {}
+			
+			str = bizstring.split(i, ";")
+			
+			table.insert(IndexToInsert, tonumber(str[1]))
+			table.insert(LambdaToInsert, tonumber(str[2]))
+			table.insert(ButtonToInsert, tonumber(str[3]))
+			table.insert(AmountToInsert, tonumber(str[4]))
+			table.insert(InsertionFrame, tonumber(str[5]))
 		 end
 	end
 
@@ -2080,7 +2274,7 @@ while true do
 
 	
 	f_old = f;
-	done = true
+	--done = true
 	
 	inget = input.get()
 	
