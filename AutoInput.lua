@@ -1666,7 +1666,7 @@ function DrawWaypoints()
 						  selectedLine = nil
 						  lambdaOnLine = nil
 				 end
-				Canvas.DrawText(0,500+14*k, tostring(mouseOverLine)..", "..tostring(selectedLine)..", "..tostring(lambdaOnLine))
+				--Canvas.DrawText(0,500+14*k, tostring(mouseOverLine)..", "..tostring(selectedLine)..", "..tostring(lambdaOnLine))
 			end
 			
 			
@@ -1737,14 +1737,14 @@ function DrawWaypoints()
 			end
 		--Canvas.DrawText(500, 100+14*k, tostring(mouseOverPoint)..", "..tostring(selectedPoint))
 			--Canvas.DrawText(x, z+36, tostring(Pselection[k]).."\n"..tostring(ind))
-			Canvas.DrawText(500, 300+14*k, tostring(clickedPoint))
+			--Canvas.DrawText(500, 300+14*k, tostring(clickedPoint))
 		end
 		
 		
 		
 	end
 
-	Canvas.DrawText(500, 100+14, tostring(mouseOverPoint)..", "..tostring(selectedPoint)..", "..tostring(clickedPoint))
+	--Canvas.DrawText(500, 100+14, tostring(mouseOverPoint)..", "..tostring(selectedPoint)..", "..tostring(clickedPoint))
 	--moving the selected point
 	if clickedPoint ~= nil --and not mouseButt["Right"]-- and Pselection[ind]
 	then 
@@ -1876,7 +1876,7 @@ function CanvasMouse(mouseOverObject, mouseOverPoint)
 		 
 	else fireRCM = false
 	end
-	Canvas.DrawText(0, 700, tostring(fireRCM))
+	--Canvas.DrawText(0, 700, tostring(fireRCM))
 end
 
 --Draws the status-strip items and handles their functions.
@@ -1947,7 +1947,7 @@ function UpdateCanvas()
 	--mouseOverObject, selectedObject = 
 	--
 	--Canvas.DrawText(0, 120, tostring(selectedObject.x)..","..tostring(selectedObject.z)..","..tostring(mouseOverObject))
-	Canvas.DrawText(0, 120, tostring(object[2])..","..tostring(object[4])..","..tostring(object[1]))
+	--Canvas.DrawText(0, 120, tostring(object[2])..","..tostring(object[4])..","..tostring(object[1]))
 	
 	DrawCamera()
 	
@@ -1961,7 +1961,7 @@ function UpdateCanvas()
 	local waypoint = DrawWaypoints()
 	
 	
-	Canvas.DrawText(0, 64, "draw:"..tostring(xDrawOffset)..";"..tostring(yDrawOffset).."\nmouse:"..tostring(mouseX)..","..tostring(mouseY).."\nfollow:"..tostring(xFollow)..","..tostring(yFollow))
+	--Canvas.DrawText(0, 64, "draw:"..tostring(xDrawOffset)..";"..tostring(yDrawOffset).."\nmouse:"..tostring(mouseX)..","..tostring(mouseY).."\nfollow:"..tostring(xFollow)..","..tostring(yFollow))
 	
 	if player.collision.radius == nil
 	then DrawPlayer(xDrawOffset, yDrawOffset, 10)
@@ -1971,7 +1971,7 @@ function UpdateCanvas()
 	StatusStrip()
 		
 	CanvasMouse(object[1], waypoint)
-	Canvas.DrawText(0, 140, tostring(mouseOverPoint)..", "..tostring(mouseOverLine))
+	--Canvas.DrawText(0, 140, tostring(mouseOverPoint)..", "..tostring(mouseOverLine))
 	
 	wasMouseButtL = mouseButt["Left"]
 	wasMouseButtR = mouseButt["Right"]
