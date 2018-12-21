@@ -1,7 +1,7 @@
 # Auto-Analog-Input-Script
 For BizHawk (TAStudio only)
 
-[CLick here for a demonstration](https://www.youtube.com/watch?v=3_EKGR7o780)
+[CLick here for a demonstration](https://www.youtube.com/watch?v=KPEsTKiKSro)
 
 Right now the script is in development, don't use it for serious TASing. Many things are broken and don't work right, also the script is undocumented spaghetti code.
 
@@ -89,7 +89,6 @@ After clicking "Done" a file called <romname>.ais will be in your Lua folder. Th
 # TODOs
 
 * Implement Pause() function properly. Pressing the Pause button should save current frame number, current waypoint goal, current waypoint list and current input (as saving a branch). The script then should stop calculating any input. If the user then clicks the Pause button again, it should set the saved variables and continue from the point when it was paused. 
-* Fix dragging a waypoint. Right now the focus jumps to another point if two point the mouse courser moves over another point. 
 * Fix zooming: If the player is not being followed zoom into where the mouse courser is or into the center of the window if the status strip buttons are used.  
 * Implement undo for deleting waypoint and moving waypoint. 
 * Insert new point for splitting path at the yellow highlighted line segment. 
